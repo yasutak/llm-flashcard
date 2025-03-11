@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
 import type { Flashcard } from "@/types"
 import { useAuth } from "./auth-context"
+import { getFlashcards, getFlashcardsForChat, generateFlashcards, updateFlashcard, deleteFlashcard } from "@/services/flashcard-service"
 
 // Dummy flashcard data
 const dummyFlashcards: Flashcard[] = [
@@ -81,9 +82,9 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      setFlashcards(dummyFlashcards)
+      // Get flashcards from the API
+      const fetchedFlashcards = await getFlashcards()
+      setFlashcards(fetchedFlashcards)
     } catch (error) {
       console.error("Error fetching flashcards:", error)
     } finally {
@@ -94,10 +95,9 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
   const fetchFlashcardsForChat = async (chatId: string) => {
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      const filteredFlashcards = dummyFlashcards.filter((card) => card.chat_id === chatId)
-      setFlashcards(filteredFlashcards)
+      // Get flashcards for the chat from the API
+      const chatFlashcards = await getFlashcardsForChat(chatId)
+      setFlashcards(chatFlashcards)
     } catch (error) {
       console.error("Error fetching flashcards for chat:", error)
     } finally {
@@ -108,10 +108,12 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
   const updateCard = async (id: string, updates: Partial<Flashcard>) => {
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      // Update the flashcard via the API
+      const updatedCard = await updateFlashcard(id, updates)
+      
+      // Update the local state
       const updatedFlashcards = flashcards.map((card) =>
-        card.id === id ? { ...card, ...updates, updated_at: Date.now() } : card,
+        card.id === id ? updatedCard : card
       )
       setFlashcards(updatedFlashcards)
     } catch (error) {
@@ -125,8 +127,10 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
   const deleteCard = async (id: string) => {
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      // Delete the flashcard via the API
+      await deleteFlashcard(id)
+      
+      // Update the local state
       const updatedFlashcards = flashcards.filter((card) => card.id !== id)
       setFlashcards(updatedFlashcards)
     } catch (error) {
@@ -140,18 +144,12 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
   const generateCardsFromChat = async (chatId: string) => {
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      const newCard: Flashcard = {
-        id: `${Date.now()}`,
-        user_id: user?.id || "user1",
-        chat_id: chatId,
-        question: "What is a new question generated from this chat?",
-        answer: "This is a simulated answer for the newly generated flashcard.",
-        created_at: Date.now(),
-        updated_at: Date.now(),
-      }
-      setFlashcards([...flashcards, newCard])
+      // Call the real API endpoint to generate flashcards
+      await generateFlashcards(chatId)
+      
+      // Fetch the updated flashcards for this chat
+      const updatedFlashcards = await getFlashcardsForChat(chatId)
+      setFlashcards(updatedFlashcards)
     } catch (error) {
       console.error("Error generating flashcards:", error)
       throw error
@@ -184,4 +182,3 @@ export function useFlashcards() {
   }
   return context
 }
-
