@@ -185,9 +185,9 @@ export default function FlashcardsPage() {
                           <div
                             className={`w-full absolute inset-0 p-6 flex items-center justify-center transition-opacity duration-300 ${
                               flipped ? "opacity-100" : "opacity-0 pointer-events-none"
-                            }`}
+                            } ${flipped ? "rotate-180" : ""}`}
                           >
-                            <div>
+                            <div className={flipped ? "rotate-180" : ""}>
                               <h3 className="text-xl font-semibold text-center mb-2">Answer:</h3>
                               <p className="text-center text-lg">{filteredCards[currentIndex]?.answer}</p>
                             </div>
