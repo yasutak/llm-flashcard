@@ -259,6 +259,134 @@ Return your response as a JSON array of flashcard objects with "question" and "a
 }
 
 /**
+ * Generate flashcards from a single message
+ * @param apiKey The Anthropic API key
+ * @param message The message to generate flashcards from
+ * @returns An array of flashcards with question and answer fields
+ */
+export async function generateFlashcardsFromMessage(
+  apiKey: string,
+  message: string
+): Promise<{ question: string; answer: string }[]> {
+  // Validate API key format
+  if (!apiKey || !apiKey.startsWith('sk-ant-')) {
+    console.error('Invalid API key format:', apiKey ? apiKey.substring(0, 10) + '...' : 'undefined');
+    throw new ClaudeApiError('Invalid API key format. API key should start with sk-ant-', 401);
+  }
+  
+  // Validate message
+  if (!message || message.trim().length === 0) {
+    console.error('Empty message provided for flashcard generation');
+    throw new Error('Cannot generate flashcards from an empty message');
+  }
+  
+  console.log('Generating flashcards from a single message');
+  
+  try {
+    // Create a prompt for flashcard generation
+    const prompt = `
+You are an expert at identifying important information and creating flashcards.
+
+Review the following content and create flashcards in a question-answer format for the most important concepts, facts, or ideas discussed.
+
+For each flashcard:
+1. Create a clear, concise question
+2. Provide a comprehensive but concise answer
+3. Focus on factual information, key concepts, and important relationships
+
+Content:
+${message}
+
+Return your response as a JSON array of flashcard objects with "question" and "answer" fields.
+`;
+
+    // Create Anthropic client
+    const client = createAnthropicClient(apiKey);
+    
+    // Create a timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new ClaudeTimeoutError()), API_TIMEOUT_MS);
+    });
+    
+    // Create the message request promise
+    const messagePromise = client.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 4000,
+      messages: [{ 
+        role: 'user', 
+        content: [{ type: 'text', text: prompt }]
+      }],
+      temperature: 0.2,
+    });
+    
+    // Race the message request against the timeout
+    const result = await Promise.race([messagePromise, timeoutPromise]);
+    
+    // Extract text from the content block
+    const contentBlock = result.content[0];
+    if (!('text' in contentBlock)) {
+      throw new ClaudeApiError('Unexpected response format from Claude API', 500);
+    }
+    
+    const responseText = contentBlock.text;
+    console.log('Received flashcard generation response from Claude');
+
+    // Extract the JSON array from the response
+    try {
+      // Find JSON in the response
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        console.error('No JSON array found in Claude response for flashcards');
+        throw new Error('No JSON array found in Claude response');
+      }
+
+      const flashcards = JSON.parse(jsonMatch[0]);
+      console.log('Successfully generated', flashcards.length, 'flashcards from message');
+      return flashcards;
+    } catch (parseError) {
+      console.error('Error parsing flashcards from Claude response:', parseError);
+      console.error('Response text:', responseText.substring(0, 200) + '...');
+      throw new Error('Failed to parse flashcards from Claude response');
+    }
+  } catch (error) {
+    // Handle timeout error
+    if (error instanceof ClaudeTimeoutError) {
+      console.error('Claude API request for flashcard generation timed out after', API_TIMEOUT_MS, 'ms');
+      throw error;
+    }
+    
+    // Handle Anthropic API errors
+    if (error instanceof Error && 'status' in error) {
+      const apiError = error as { status: number; message: string };
+      console.error('Claude API error during flashcard generation:', {
+        status: apiError.status,
+        message: apiError.message,
+        error: error
+      });
+      
+      throw new ClaudeApiError(
+        `Claude API error: ${apiError.message || 'Unknown error'}`,
+        apiError.status || 500
+      );
+    }
+    
+    // Log and wrap other errors
+    console.error('Error generating flashcards from message:', error);
+    
+    if (error instanceof Error) {
+      if (error.message === 'No JSON array found in Claude response' || 
+          error.message === 'Failed to parse flashcards from Claude response') {
+        throw error; // Re-throw parsing errors
+      }
+    }
+    
+    throw new ClaudeNetworkError(
+      error instanceof Error ? error.message : 'Failed to generate flashcards from message'
+    );
+  }
+}
+
+/**
  * Verify that an API key is valid
  * @param apiKey The Anthropic API key to verify
  * @returns True if the API key is valid, false otherwise

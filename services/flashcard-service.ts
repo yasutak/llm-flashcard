@@ -37,3 +37,8 @@ export async function generateFlashcards(chatId: string): Promise<void> {
   })
 }
 
+export async function generateFlashcardsFromMessage(chatId: string, messageId: string): Promise<void> {
+  await fetchWithAuth(`/chats/${chatId}/messages/${messageId}/generate-flashcards`, {
+    method: "POST",
+  })
+}

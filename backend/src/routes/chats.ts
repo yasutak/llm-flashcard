@@ -6,7 +6,7 @@ import { HTTPException } from 'hono/http-exception';
 import { authMiddleware } from '../middleware/auth';
 import { queryAll, queryOne } from '../utils/db';
 import { decrypt } from '../utils/encryption';
-import { sendMessageToClaude, generateFlashcardsFromConversation } from '../services/claude-service';
+import { sendMessageToClaude, generateFlashcardsFromConversation, generateFlashcardsFromMessage } from '../services/claude-service';
 import type { Env, Chat, Message, CreateChatRequest, SendMessageRequest } from '../types';
 
 // Create a router for chat routes
@@ -241,6 +241,81 @@ router.post(
     }
   }
 );
+
+// Generate flashcards from a specific message
+router.post('/:chatId/messages/:messageId/generate-flashcards', async (c) => {
+  const userId = c.get('userId');
+  const chatId = c.req.param('chatId');
+  const messageId = c.req.param('messageId');
+  
+  try {
+    // Check if the chat exists and belongs to the user
+    const chat = await queryOne<Chat>(
+      c.env.DB,
+      'SELECT id FROM chats WHERE id = ? AND user_id = ?',
+      [chatId, userId]
+    );
+    
+    if (!chat) {
+      throw new HTTPException(404, { message: 'Chat not found' });
+    }
+    
+    // Check if the message exists and belongs to the chat
+    const message = await queryOne<Message>(
+      c.env.DB,
+      'SELECT id, content, role FROM messages WHERE id = ? AND chat_id = ?',
+      [messageId, chatId]
+    );
+    
+    if (!message) {
+      throw new HTTPException(404, { message: 'Message not found' });
+    }
+    
+    // Only generate flashcards from assistant messages
+    if (message.role !== 'assistant') {
+      throw new HTTPException(400, { message: 'Can only generate flashcards from assistant messages' });
+    }
+    
+    // Get the user's API key
+    const user = await queryOne<{ encrypted_api_key: string }>(
+      c.env.DB,
+      'SELECT encrypted_api_key FROM users WHERE id = ?',
+      [userId]
+    );
+    
+    if (!user || !user.encrypted_api_key) {
+      throw new HTTPException(400, { message: 'API key not found' });
+    }
+    
+    // Decrypt the API key
+    const apiKey = await decrypt(user.encrypted_api_key, c.env.ENCRYPTION_KEY);
+    
+    // Generate flashcards from the message
+    const flashcards = await generateFlashcardsFromMessage(apiKey, message.content);
+    
+    // Get the current timestamp
+    const now = Math.floor(Date.now() / 1000);
+    
+    // Insert the flashcards
+    for (const flashcard of flashcards) {
+      const flashcardId = nanoid();
+      
+      await c.env.DB.prepare(
+        'INSERT INTO flashcards (id, user_id, chat_id, question, answer, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      )
+        .bind(flashcardId, userId, chatId, flashcard.question, flashcard.answer, now, now)
+        .run();
+    }
+    
+    return c.json({ success: true, count: flashcards.length });
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
+    console.error('Error generating flashcards from message:', error);
+    throw new HTTPException(500, { message: 'Internal server error' });
+  }
+});
 
 // Generate flashcards from a chat
 router.post('/:chatId/generate-flashcards', async (c) => {

@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
 import type { Flashcard } from "@/types"
 import { useAuth } from "./auth-context"
-import { getFlashcards, getFlashcardsForChat, generateFlashcards, updateFlashcard, deleteFlashcard } from "@/services/flashcard-service"
+import { getFlashcards, getFlashcardsForChat, generateFlashcards, updateFlashcard, deleteFlashcard, generateFlashcardsFromMessage } from "@/services/flashcard-service"
 
 // Dummy flashcard data
 const dummyFlashcards: Flashcard[] = [
@@ -62,6 +62,7 @@ interface FlashcardContextType {
   updateCard: (id: string, updates: Partial<Flashcard>) => Promise<void>
   deleteCard: (id: string) => Promise<void>
   generateCardsFromChat: (chatId: string) => Promise<void>
+  generateCardsFromMessage: (chatId: string, messageId: string) => Promise<void>
 }
 
 const FlashcardContext = createContext<FlashcardContextType | undefined>(undefined)
@@ -158,6 +159,23 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const generateCardsFromMessage = async (chatId: string, messageId: string) => {
+    setIsLoading(true)
+    try {
+      // Call the API endpoint to generate flashcards from a specific message
+      await generateFlashcardsFromMessage(chatId, messageId)
+      
+      // Fetch the updated flashcards for this chat
+      const updatedFlashcards = await getFlashcardsForChat(chatId)
+      setFlashcards(updatedFlashcards)
+    } catch (error) {
+      console.error("Error generating flashcards from message:", error)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <FlashcardContext.Provider
       value={{
@@ -168,6 +186,7 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
         updateCard,
         deleteCard,
         generateCardsFromChat,
+        generateCardsFromMessage,
       }}
     >
       {children}

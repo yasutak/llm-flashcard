@@ -8,7 +8,7 @@ import remarkGfm from "remark-gfm"
 import { MainNav } from "@/components/main-nav"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Send, Bot, UserIcon, Lightbulb, Plus, MessageSquare, Copy, Check } from "lucide-react"
+import { Send, Bot, UserIcon, Lightbulb, Plus, MessageSquare, Copy, Check, BookOpen } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useChat } from "@/contexts/chat-context"
 import { useFlashcards } from "@/contexts/flashcard-context"
@@ -17,6 +17,58 @@ import { useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ApiError } from "@/services/api"
+
+// Flashcard button component
+function FlashcardButton({ chatId, messageId }: { chatId?: string; messageId: string }) {
+  const [generating, setGenerating] = useState(false)
+  const { generateCardsFromMessage } = useFlashcards()
+  const { toast } = useToast()
+  
+  const handleGenerateFlashcards = async () => {
+    if (!chatId) return
+    
+    setGenerating(true)
+    try {
+      await generateCardsFromMessage(chatId, messageId)
+      toast({
+        title: "Flashcards generated",
+        description: "Flashcards have been created from this message",
+      })
+    } catch (error) {
+      let errorMessage = "Failed to generate flashcards. Please try again.";
+      
+      if (error instanceof ApiError) {
+        errorMessage = error.getDetailedMessage();
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: "Error generating flashcards",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setGenerating(false)
+    }
+  }
+  
+  return (
+    <button 
+      onClick={handleGenerateFlashcards}
+      disabled={generating}
+      className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+      aria-label="Generate flashcards from this message"
+      title="Generate flashcards from this message"
+    >
+      {generating ? (
+        <div className="h-4 w-4 border-2 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin" />
+      ) : (
+        <BookOpen className="h-4 w-4" />
+      )}
+    </button>
+  )
+}
 
 // Copy button component
 function CopyButton({ content }: { content: string }) {
@@ -39,7 +91,7 @@ function CopyButton({ content }: { content: string }) {
   return (
     <button 
       onClick={handleCopy}
-      className="absolute top-0 right-0 p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+      className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
       aria-label="Copy to clipboard"
       title="Copy to clipboard"
     >
@@ -197,9 +249,14 @@ export default function ChatPage() {
                       {message.role === "user" ? (
                         <p className="whitespace-pre-wrap">{message.content}</p>
                       ) : (
-                        <div className="markdown-content relative">
-                          {/* Copy button for assistant messages */}
-                          <CopyButton content={message.content} />
+                        <div className="markdown-content relative pt-8">
+                          <div className="absolute top-0 right-0 flex space-x-1">
+                            {/* Generate flashcards button for assistant messages */}
+                            <FlashcardButton chatId={currentChat?.id} messageId={message.id} />
+                            
+                            {/* Copy button for assistant messages */}
+                            <CopyButton content={message.content} />
+                          </div>
                           
                           <ReactMarkdown 
                             remarkPlugins={[remarkGfm]}
