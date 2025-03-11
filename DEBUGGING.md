@@ -56,15 +56,36 @@ This makes it easier to identify and fix issues, especially when working with ex
 
 ### Validation Errors
 
-The application now displays field-specific validation errors directly in the form. When a validation error occurs:
+The application now has a comprehensive validation system with both client-side and server-side validation:
 
-1. The invalid field is highlighted with a red border
-2. An error message is displayed below the field
-3. A toast notification is shown with a general validation error message
+#### Client-Side Validation
+- Real-time validation as users type (after first field interaction)
+- Immediate feedback with field-specific error messages
+- Visual indicators (red borders) for invalid fields
+- Validation rules are applied consistently across the application
 
-This helps users quickly identify and fix validation issues without having to guess what went wrong.
+#### Server-Side Validation
+- Zod validation on the backend ensures data integrity
+- Validation errors are properly formatted and returned to the frontend
+- The frontend parses and displays these errors in the appropriate form fields
+
+#### Centralized Error Handling
+- A dedicated error context manages all form errors
+- Form fields automatically connect to this context
+- API errors are automatically mapped to form fields
+- Consistent error styling and messaging throughout the app
+
+This dual approach ensures both a responsive user experience and robust data validation.
 
 ## Recent Changes
+
+### 2025-03-12: Implemented Comprehensive Validation System
+
+- Created a centralized error context for managing form errors
+- Built a reusable FormField component with real-time validation
+- Implemented a validation rules system with common validation patterns
+- Connected API error responses to the form validation system
+- Added client-side validation that matches server-side validation rules
 
 ### 2025-03-12: Improved Validation Error Handling
 

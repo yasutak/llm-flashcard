@@ -1,5 +1,6 @@
 import { AuthProvider } from "@/contexts/auth-context"
 import { ChatProvider } from "@/contexts/chat-context"
+import { ErrorProvider } from "@/contexts/error-context"
 import { FlashcardProvider } from "@/contexts/flashcard-context"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
@@ -23,14 +24,15 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <AuthProvider>
-            <ChatProvider>
-              <FlashcardProvider>{children}</FlashcardProvider>
-            </ChatProvider>
-          </AuthProvider>
+          <ErrorProvider>
+            <AuthProvider>
+              <ChatProvider>
+                <FlashcardProvider>{children}</FlashcardProvider>
+              </ChatProvider>
+            </AuthProvider>
+          </ErrorProvider>
         </ThemeProvider>
       </body>
     </html>
   )
 }
-

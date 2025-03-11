@@ -2,76 +2,44 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BrainCircuit } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { ApiError } from "@/services/api"
+import { FormField } from "@/components/form-field"
+import { useErrors } from "@/contexts/error-context"
+import { ValidationRules } from "@/types/validation"
+
+// Form IDs
+const LOGIN_FORM = "login-form";
+const REGISTER_FORM = "register-form";
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [errors, setErrors] = useState<Record<string, string>>({})
   const { login, register, isLoading } = useAuth()
   const { toast } = useToast()
-
-  // Client-side validation function
-  const validateForm = (isRegister = false): boolean => {
-    const newErrors: Record<string, string> = {};
-    
-    // Validate username
-    if (!username) {
-      newErrors.username = "Username is required";
-    } else if (username.length < 3) {
-      newErrors.username = "Username must be at least 3 characters";
-    } else if (username.length > 50) {
-      newErrors.username = "Username must be less than 50 characters";
-    }
-    
-    // Validate password
-    if (!password) {
-      newErrors.password = "Password is required";
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
-    
-    // Validate confirm password (only for registration)
-    if (isRegister && password !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords don't match";
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }
+  const { clearErrors } = useErrors()
+  
+  // Clear form errors when switching tabs
+  useEffect(() => {
+    clearErrors(LOGIN_FORM);
+    clearErrors(REGISTER_FORM);
+  }, [activeTab, clearErrors]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setErrors({})
-    
-    // Validate form before submission
-    if (!validateForm()) {
-      return;
-    }
 
     try {
       await login({ username, password })
     } catch (error) {
       if (error instanceof ApiError && error.isValidationError()) {
-        const validationErrors = error.getValidationErrors();
-        if (validationErrors) {
-          const fieldErrors: Record<string, string> = {};
-          validationErrors.forEach(err => {
-            fieldErrors[err.field] = err.message;
-          });
-          setErrors(fieldErrors);
-        }
-        
         toast({
           title: "Validation Error",
           description: "Please correct the errors in the form",
@@ -97,26 +65,11 @@ export default function LoginPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    setErrors({})
-    
-    // Validate form before submission
-    if (!validateForm(true)) {
-      return;
-    }
 
     try {
       await register({ username, password, confirmPassword })
     } catch (error) {
       if (error instanceof ApiError && error.isValidationError()) {
-        const validationErrors = error.getValidationErrors();
-        if (validationErrors) {
-          const fieldErrors: Record<string, string> = {};
-          validationErrors.forEach(err => {
-            fieldErrors[err.field] = err.message;
-          });
-          setErrors(fieldErrors);
-        }
-        
         toast({
           title: "Validation Error",
           description: "Please correct the errors in the form",
@@ -166,50 +119,33 @@ export default function LoginPage() {
             <TabsContent value="login">
               <form onSubmit={handleLogin}>
                 <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <label htmlFor="username" className="text-sm font-medium">
-                      Username
-                    </label>
-                    <Input
-                      id="username"
-                      type="text"
-                      value={username}
-                      onChange={(e) => {
-                        setUsername(e.target.value);
-                        // Clear error when user types
-                        if (errors.username) {
-                          setErrors({...errors, username: ""});
-                        }
-                      }}
-                      required
-                      className={`border-blue-200 focus:border-blue-500 ${errors.username || errors['0'] ? 'border-red-500' : ''}`}
-                    />
-                    {(errors.username || errors['0']) && (
-                      <p className="text-xs text-red-500 mt-1">{errors.username || errors['0']}</p>
-                    )}
-                  </div>
-                  <div className="grid gap-2">
-                    <label htmlFor="password" className="text-sm font-medium">
-                      Password
-                    </label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        // Clear error when user types
-                        if (errors.password) {
-                          setErrors({...errors, password: ""});
-                        }
-                      }}
-                      required
-                      className={`border-blue-200 focus:border-blue-500 ${errors.password || errors['1'] ? 'border-red-500' : ''}`}
-                    />
-                    {(errors.password || errors['1']) && (
-                      <p className="text-xs text-red-500 mt-1">{errors.password || errors['1']}</p>
-                    )}
-                  </div>
+                  <FormField
+                    formId={LOGIN_FORM}
+                    name="username"
+                    label="Username"
+                    value={username}
+                    onChange={setUsername}
+                    required
+                    rules={[
+                      ValidationRules.required(),
+                      ValidationRules.minLength(3),
+                      ValidationRules.maxLength(50)
+                    ]}
+                  />
+                  <FormField
+                    formId={LOGIN_FORM}
+                    name="password"
+                    label="Password"
+                    type="password"
+                    value={password}
+                    onChange={setPassword}
+                    required
+                    autoComplete="current-password"
+                    rules={[
+                      ValidationRules.required(),
+                      ValidationRules.minLength(6)
+                    ]}
+                  />
                   <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 mt-2" disabled={isLoading}>
                     {isLoading ? "Logging in..." : "Log in"}
                   </Button>
@@ -220,72 +156,48 @@ export default function LoginPage() {
             <TabsContent value="register">
               <form onSubmit={handleRegister}>
                 <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <label htmlFor="register-username" className="text-sm font-medium">
-                      Username
-                    </label>
-                    <Input
-                      id="register-username"
-                      type="text"
-                      value={username}
-                      onChange={(e) => {
-                        setUsername(e.target.value);
-                        // Clear error when user types
-                        if (errors.username) {
-                          setErrors({...errors, username: ""});
-                        }
-                      }}
-                      required
-                      className={`border-blue-200 focus:border-blue-500 ${errors.username || errors['0'] ? 'border-red-500' : ''}`}
-                    />
-                    {(errors.username || errors['0']) && (
-                      <p className="text-xs text-red-500 mt-1">{errors.username || errors['0']}</p>
-                    )}
-                  </div>
-                  <div className="grid gap-2">
-                    <label htmlFor="register-password" className="text-sm font-medium">
-                      Password
-                    </label>
-                    <Input
-                      id="register-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        // Clear error when user types
-                        if (errors.password) {
-                          setErrors({...errors, password: ""});
-                        }
-                      }}
-                      required
-                      className={`border-blue-200 focus:border-blue-500 ${errors.password || errors['1'] ? 'border-red-500' : ''}`}
-                    />
-                    {(errors.password || errors['1']) && (
-                      <p className="text-xs text-red-500 mt-1">{errors.password || errors['1']}</p>
-                    )}
-                  </div>
-                  <div className="grid gap-2">
-                    <label htmlFor="confirm-password" className="text-sm font-medium">
-                      Confirm Password
-                    </label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        // Clear error when user types
-                        if (errors.confirmPassword) {
-                          setErrors({...errors, confirmPassword: ""});
-                        }
-                      }}
-                      required
-                      className={`border-blue-200 focus:border-blue-500 ${errors.confirmPassword ? 'border-red-500' : ''}`}
-                    />
-                    {errors.confirmPassword && (
-                      <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
-                    )}
-                  </div>
+                  <FormField
+                    formId={REGISTER_FORM}
+                    name="username"
+                    label="Username"
+                    value={username}
+                    onChange={setUsername}
+                    required
+                    autoComplete="username"
+                    rules={[
+                      ValidationRules.required(),
+                      ValidationRules.minLength(3),
+                      ValidationRules.maxLength(50)
+                    ]}
+                  />
+                  <FormField
+                    formId={REGISTER_FORM}
+                    name="password"
+                    label="Password"
+                    type="password"
+                    value={password}
+                    onChange={setPassword}
+                    required
+                    autoComplete="new-password"
+                    rules={[
+                      ValidationRules.required(),
+                      ValidationRules.minLength(6)
+                    ]}
+                  />
+                  <FormField
+                    formId={REGISTER_FORM}
+                    name="confirmPassword"
+                    label="Confirm Password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={setConfirmPassword}
+                    required
+                    autoComplete="new-password"
+                    rules={[
+                      ValidationRules.required(),
+                      ValidationRules.match(() => password, "Passwords don't match")
+                    ]}
+                  />
                   <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 mt-2" disabled={isLoading}>
                     {isLoading ? "Creating account..." : "Create account"}
                   </Button>

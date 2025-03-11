@@ -9,6 +9,8 @@ import {
   checkApiKey,
 } from "@/services/auth-service"
 import { useRouter } from "next/navigation"
+import { ApiError } from "@/services/api"
+import { useErrors } from "./error-context"
 
 interface AuthContextType {
   user: User | null
@@ -22,11 +24,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Form IDs
+export const LOGIN_FORM = "login-form";
+export const REGISTER_FORM = "register-form";
+export const API_KEY_FORM = "api-key-form";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [hasApiKey, setHasApiKey] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const router = useRouter()
+  const { setApiErrors } = useErrors()
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token")
@@ -52,6 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setHasApiKey(hasKey)
       router.push("/api-key")
     } catch (error) {
+      // Handle API errors
+      if (error instanceof ApiError) {
+        setApiErrors(LOGIN_FORM, error)
+      }
       throw error
     } finally {
       setIsLoading(false)
@@ -70,6 +82,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setHasApiKey(hasKey)
       router.push("/api-key")
     } catch (error) {
+      // Handle API errors
+      if (error instanceof ApiError) {
+        setApiErrors(REGISTER_FORM, error)
+      }
       throw error
     } finally {
       setIsLoading(false)
