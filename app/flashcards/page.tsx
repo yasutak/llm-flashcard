@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Edit, Trash2, Search, Calendar, MessageSquar
 import { useFlashcards } from "@/contexts/flashcard-context"
 import { useChat } from "@/contexts/chat-context"
 import { useToast } from "@/hooks/use-toast"
+import { useErrors } from "@/contexts/error-context"
 import type { Flashcard } from "@/types"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -20,6 +21,7 @@ export default function FlashcardsPage() {
   const { flashcards, isLoading, fetchFlashcards, updateCard, deleteCard } = useFlashcards()
   const { chats } = useChat()
   const { toast } = useToast()
+  const { setApiErrors } = useErrors()
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
@@ -79,18 +81,34 @@ export default function FlashcardsPage() {
       })
     } catch (error) {
       let errorMessage = "Failed to update the flashcard. Please try again.";
+      let errorDetails = "";
       
       if (error instanceof ApiError) {
         errorMessage = error.getDetailedMessage();
+        
+        // Check if this is a validation error
+        if (error.isValidationError()) {
+          const validationErrors = error.getValidationErrors();
+          if (validationErrors) {
+            // Format validation errors for display
+            errorDetails = validationErrors.map(err => `${err.field}: ${err.message}`).join('\n');
+            
+            // If we have validation errors, set them in the form
+            setApiErrors("editFlashcard", error);
+          }
+        }
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
       
       toast({
         title: "Error updating flashcard",
-        description: errorMessage,
+        description: errorDetails || errorMessage,
         variant: "destructive",
       })
+      
+      // Log the full error for debugging
+      console.error("Flashcard update error:", error);
     }
   }
 
@@ -106,18 +124,31 @@ export default function FlashcardsPage() {
       })
     } catch (error) {
       let errorMessage = "Failed to delete the flashcard. Please try again.";
+      let errorDetails = "";
       
       if (error instanceof ApiError) {
         errorMessage = error.getDetailedMessage();
+        
+        // Check if this is a validation error
+        if (error.isValidationError()) {
+          const validationErrors = error.getValidationErrors();
+          if (validationErrors) {
+            // Format validation errors for display
+            errorDetails = validationErrors.map(err => `${err.field}: ${err.message}`).join('\n');
+          }
+        }
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
       
       toast({
         title: "Error deleting flashcard",
-        description: errorMessage,
+        description: errorDetails || errorMessage,
         variant: "destructive",
       })
+      
+      // Log the full error for debugging
+      console.error("Flashcard delete error:", error);
     }
   }
 

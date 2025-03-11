@@ -15,7 +15,8 @@ import { useFlashcards } from "@/contexts/flashcard-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { Switch } from "@/components/ui/switch"
 import { ApiError } from "@/services/api"
 
 // Flashcard button component
@@ -43,18 +44,31 @@ function FlashcardButton({ chatId, messageId }: { chatId?: string; messageId: st
       })
     } catch (error) {
       let errorMessage = "Failed to generate flashcards. Please try again.";
+      let errorDetails = "";
       
       if (error instanceof ApiError) {
         errorMessage = error.getDetailedMessage();
+        
+        // Check if this is a validation error
+        if (error.isValidationError()) {
+          const validationErrors = error.getValidationErrors();
+          if (validationErrors) {
+            // Format validation errors for display
+            errorDetails = validationErrors.map(err => `${err.field}: ${err.message}`).join('\n');
+          }
+        }
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
       
       toast({
         title: "Error generating flashcards",
-        description: errorMessage,
+        description: errorDetails || errorMessage,
         variant: "destructive",
       })
+      
+      // Log the full error for debugging
+      console.error("Flashcard generation error:", error);
     } finally {
       setGenerating(false)
       // Reset the processing flag after a short delay to prevent rapid re-clicks
@@ -119,7 +133,17 @@ export default function ChatPage() {
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { hasApiKey } = useAuth()
-  const { currentChat, messages, sendingMessage, sendChatMessage, startNewChat, chats, selectChat } = useChat()
+  const { 
+    currentChat, 
+    messages, 
+    sendingMessage, 
+    sendChatMessage, 
+    startNewChat, 
+    chats, 
+    selectChat,
+    autoGenerateFlashcards,
+    setAutoGenerateFlashcards
+  } = useChat()
   const { generateCardsFromChat } = useFlashcards()
   const { toast } = useToast()
   const router = useRouter()
@@ -140,18 +164,31 @@ export default function ChatPage() {
       setInput("")
     } catch (error) {
       let errorMessage = "Failed to send your message. Please try again.";
+      let errorDetails = "";
       
       if (error instanceof ApiError) {
         errorMessage = error.getDetailedMessage();
+        
+        // Check if this is a validation error
+        if (error.isValidationError()) {
+          const validationErrors = error.getValidationErrors();
+          if (validationErrors) {
+            // Format validation errors for display
+            errorDetails = validationErrors.map(err => `${err.field}: ${err.message}`).join('\n');
+          }
+        }
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
       
       toast({
         title: "Error sending message",
-        description: errorMessage,
+        description: errorDetails || errorMessage,
         variant: "destructive",
       })
+      
+      // Log the full error for debugging
+      console.error("Message send error:", error);
     }
   }
 
@@ -181,18 +218,31 @@ export default function ChatPage() {
       })
     } catch (error) {
       let errorMessage = "Failed to generate flashcards. Please try again.";
+      let errorDetails = "";
       
       if (error instanceof ApiError) {
         errorMessage = error.getDetailedMessage();
+        
+        // Check if this is a validation error
+        if (error.isValidationError()) {
+          const validationErrors = error.getValidationErrors();
+          if (validationErrors) {
+            // Format validation errors for display
+            errorDetails = validationErrors.map(err => `${err.field}: ${err.message}`).join('\n');
+          }
+        }
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
       
       toast({
         title: "Error generating flashcards",
-        description: errorMessage,
+        description: errorDetails || errorMessage,
         variant: "destructive",
       })
+      
+      // Log the full error for debugging
+      console.error("Chat flashcard generation error:", error);
     } finally {
       setIsGenerating(false)
       // Reset the processing flag after a short delay to prevent rapid re-clicks
@@ -373,6 +423,17 @@ export default function ChatPage() {
                       "Generate flashcards from this chat"
                     )}
                   </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <div className="px-2 py-1.5 text-sm flex items-center justify-between">
+                    <span>Auto-generate flashcards</span>
+                    <Switch
+                      checked={autoGenerateFlashcards}
+                      onCheckedChange={setAutoGenerateFlashcards}
+                      aria-label="Toggle auto-generate flashcards"
+                    />
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Textarea
