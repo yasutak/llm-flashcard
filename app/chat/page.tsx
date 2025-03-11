@@ -8,7 +8,8 @@ import remarkGfm from "remark-gfm"
 import { MainNav } from "@/components/main-nav"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Send, Bot, UserIcon, Lightbulb, Plus, MessageSquare, Copy, Check, BookOpen } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Send, Bot, UserIcon, Lightbulb, Plus, MessageSquare, Copy, Check, BookOpen, Edit, Save } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useChat } from "@/contexts/chat-context"
 import { useFlashcards } from "@/contexts/flashcard-context"
@@ -37,10 +38,10 @@ function FlashcardButton({ chatId, messageId }: { chatId?: string; messageId: st
     isProcessingRef.current = true
     
     try {
-      await generateCardsFromMessage(chatId, messageId)
+      const result = await generateCardsFromMessage(chatId, messageId)
       toast({
         title: "Flashcards generated",
-        description: "Flashcards have been created from this message",
+        description: `Flashcards have been created from this message (Deck ID: ${result.deck_id})`,
       })
     } catch (error) {
       let errorMessage = "Failed to generate flashcards. Please try again.";
@@ -142,8 +143,13 @@ export default function ChatPage() {
     chats, 
     selectChat,
     autoGenerateFlashcards,
-    setAutoGenerateFlashcards
+    setAutoGenerateFlashcards,
+    updateChatTitle
   } = useChat()
+  
+  // State for chat title editing
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editedTitle, setEditedTitle] = useState("")
   const { generateCardsFromChat } = useFlashcards()
   const { toast } = useToast()
   const router = useRouter()
@@ -211,10 +217,10 @@ export default function ChatPage() {
     isGeneratingRef.current = true
 
     try {
-      await generateCardsFromChat(currentChat.id)
+      const result = await generateCardsFromChat(currentChat.id)
       toast({
         title: "Flashcards generated",
-        description: "Flashcards have been created from this conversation",
+        description: `Flashcards have been created from this conversation (Deck ID: ${result.deck_id})`,
       })
     } catch (error) {
       let errorMessage = "Failed to generate flashcards. Please try again.";
@@ -296,6 +302,99 @@ export default function ChatPage() {
 
         {/* Main chat area */}
         <div className="flex-1 flex flex-col bg-gradient-to-b from-blue-50 to-white">
+          {/* Chat header with title */}
+          {currentChat && (
+            <div className="bg-white border-b p-4 flex items-center justify-between">
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <Input
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    className="border-blue-200 focus:border-blue-500"
+                    placeholder="Enter chat title"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (editedTitle.trim()) {
+                          updateChatTitle(currentChat.id, editedTitle.trim())
+                            .then(() => {
+                              setIsEditingTitle(false);
+                              toast({
+                                title: "Chat renamed",
+                                description: "The chat title has been updated",
+                              });
+                            })
+                            .catch((error) => {
+                              toast({
+                                title: "Error renaming chat",
+                                description: "Failed to update chat title",
+                                variant: "destructive",
+                              });
+                              console.error("Error updating chat title:", error);
+                            });
+                        }
+                      } else if (e.key === "Escape") {
+                        setIsEditingTitle(false);
+                        setEditedTitle(currentChat.title);
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <Button
+                    onClick={() => {
+                      if (editedTitle.trim()) {
+                        updateChatTitle(currentChat.id, editedTitle.trim())
+                          .then(() => {
+                            setIsEditingTitle(false);
+                            toast({
+                              title: "Chat renamed",
+                              description: "The chat title has been updated",
+                            });
+                          })
+                          .catch((error) => {
+                            toast({
+                              title: "Error renaming chat",
+                              description: "Failed to update chat title",
+                              variant: "destructive",
+                            });
+                            console.error("Error updating chat title:", error);
+                          });
+                      }
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Save className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsEditingTitle(false);
+                      setEditedTitle(currentChat.title);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between w-full">
+                  <h1 className="text-xl font-semibold text-gray-800">{currentChat.title}</h1>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIsEditingTitle(true);
+                      setEditedTitle(currentChat.title);
+                    }}
+                    className="text-gray-500 hover:text-blue-600"
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Rename
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="flex-1 overflow-y-auto p-4">
             <div className="mx-auto max-w-3xl space-y-4 pb-20">
               {messages.length === 0 ? (
@@ -422,6 +521,34 @@ export default function ChatPage() {
                     ) : (
                       "Generate flashcards from this chat"
                     )}
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (currentChat) {
+                        // Navigate to flashcards page with this chat's deck selected
+                        router.push(`/flashcards?chatId=${currentChat.id}`);
+                      }
+                    }}
+                    disabled={!currentChat}
+                    className="flex items-center"
+                  >
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    View flashcards for this chat
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (currentChat) {
+                        // Navigate to side-by-side view
+                        router.push(`/chat-with-flashcards?chatId=${currentChat.id}`);
+                      }
+                    }}
+                    disabled={!currentChat}
+                    className="flex items-center"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Side-by-side view
                   </DropdownMenuItem>
                   
                   <DropdownMenuSeparator />

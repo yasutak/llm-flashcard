@@ -1,15 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { MainNav } from "@/components/main-nav"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { ChevronLeft, ChevronRight, Edit, Trash2, Search, Calendar, MessageSquare } from "lucide-react"
+import { ChevronLeft, ChevronRight, Edit, Trash2, Search, Calendar, Folder, MessageSquare } from "lucide-react"
 import { useFlashcards } from "@/contexts/flashcard-context"
-import { useChat } from "@/contexts/chat-context"
 import { useToast } from "@/hooks/use-toast"
 import { useErrors } from "@/contexts/error-context"
 import type { Flashcard } from "@/types"
@@ -18,8 +18,19 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ApiError } from "@/services/api"
 
 export default function FlashcardsPage() {
-  const { flashcards, isLoading, fetchFlashcards, updateCard, deleteCard } = useFlashcards()
-  const { chats } = useChat()
+  const router = useRouter()
+  const { 
+    flashcards, 
+    decks, 
+    isLoading, 
+    fetchFlashcards, 
+    fetchDecks,
+    fetchFlashcardsForDeck,
+    updateCard, 
+    deleteCard,
+    updateDeckTitle,
+    deleteDeck
+  } = useFlashcards()
   const { toast } = useToast()
   const { setApiErrors } = useErrors()
 
@@ -28,17 +39,50 @@ export default function FlashcardsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [editMode, setEditMode] = useState(false)
   const [editedCard, setEditedCard] = useState<Flashcard | null>(null)
+  const [editDeckMode, setEditDeckMode] = useState(false)
+  const [editedDeckTitle, setEditedDeckTitle] = useState("")
+  const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null)
 
-  // Track if we've already fetched flashcards to prevent infinite loops
+  // Track if we've already fetched data to prevent infinite loops
   const [hasFetched, setHasFetched] = useState(false)
+
+  // Check for chatId in URL query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const chatId = params.get('chatId');
+    
+    if (chatId && decks.length > 0) {
+      // Find the deck associated with this chat
+      const deck = decks.find(d => d.chat_id === chatId);
+      if (deck) {
+        setSelectedDeckId(deck.id);
+      }
+    }
+  }, [decks]);
 
   useEffect(() => {
     // Only fetch if we haven't already fetched and we're not currently loading
     if (!hasFetched && !isLoading) {
-      fetchFlashcards()
+      fetchDecks()
+      // Only fetch all flashcards if no deck is selected
+      if (!selectedDeckId) {
+        fetchFlashcards()
+      }
       setHasFetched(true)
     }
-  }, [fetchFlashcards, hasFetched, isLoading])
+  }, [fetchFlashcards, fetchDecks, hasFetched, isLoading, selectedDeckId])
+
+  // When a deck is selected, fetch its flashcards
+  useEffect(() => {
+    if (selectedDeckId) {
+      fetchFlashcardsForDeck(selectedDeckId)
+      // Find the deck in the decks array
+      const deck = decks.find(d => d.id === selectedDeckId)
+      if (deck) {
+        setEditedDeckTitle(deck.title)
+      }
+    }
+  }, [selectedDeckId, fetchFlashcardsForDeck, decks])
 
   const filteredCards = flashcards.filter(
     (card) =>
@@ -152,10 +196,6 @@ export default function FlashcardsPage() {
     }
   }
 
-  const getChatTitle = (chatId: string) => {
-    const chat = chats.find((c) => c.id === chatId)
-    return chat?.title || "Unknown chat"
-  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -163,7 +203,149 @@ export default function FlashcardsPage() {
       <div className="flex-1 bg-gradient-to-b from-blue-50 to-white p-4">
         <div className="mx-auto max-w-4xl">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Your Flashcards</h1>
+            <div className="flex justify-between items-center mb-2">
+              <h1 className="text-2xl font-bold text-gray-900">Your Flashcards</h1>
+              
+              {/* Side-by-side view button */}
+              {selectedDeckId && (
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    // Find the chat ID for this deck
+                    const deck = decks.find(d => d.id === selectedDeckId);
+                    if (deck && deck.chat_id) {
+                      router.push(`/chat-with-flashcards?chatId=${deck.chat_id}`);
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Side-by-side View
+                </Button>
+              )}
+            </div>
+            
+            {/* Deck selector */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-700">Decks</h2>
+                {editDeckMode && selectedDeckId ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={editedDeckTitle}
+                      onChange={(e) => setEditedDeckTitle(e.target.value)}
+                      className="border-blue-200 focus:border-blue-500"
+                    />
+                    <Button 
+                      onClick={async () => {
+                        try {
+                          await updateDeckTitle(selectedDeckId, editedDeckTitle);
+                          setEditDeckMode(false);
+                          toast({
+                            title: "Deck updated",
+                            description: "Deck title has been updated",
+                          });
+                        } catch (error) {
+                          console.error("Error updating deck:", error);
+                          toast({
+                            title: "Error updating deck",
+                            description: "Failed to update deck title",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Save
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setEditDeckMode(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSelectedDeckId(null);
+                      fetchFlashcards();
+                    }}
+                    className={!selectedDeckId ? "bg-blue-100" : ""}
+                  >
+                    All Flashcards
+                  </Button>
+                )}
+              </div>
+              
+              <ScrollArea className="h-24 mt-2 border rounded-md p-2">
+                <div className="space-y-1">
+                  {decks.map((deck) => (
+                    <div 
+                      key={deck.id} 
+                      className={`flex items-center justify-between p-2 rounded-md cursor-pointer ${
+                        selectedDeckId === deck.id ? "bg-blue-100" : "hover:bg-gray-100"
+                      }`}
+                    >
+                      <div 
+                        className="flex items-center gap-2 flex-1"
+                        onClick={() => setSelectedDeckId(deck.id)}
+                      >
+                        <Folder className="h-4 w-4 text-blue-500" />
+                        <span>{deck.title}</span>
+                      </div>
+                      {selectedDeckId === deck.id && !editDeckMode && (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditDeckMode(true);
+                              setEditedDeckTitle(deck.title);
+                            }}
+                            className="h-7 w-7 text-gray-500 hover:text-blue-600"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={async () => {
+                              if (confirm("Are you sure you want to delete this deck and all its flashcards?")) {
+                                try {
+                                  await deleteDeck(deck.id);
+                                  setSelectedDeckId(null);
+                                  fetchDecks();
+                                  fetchFlashcards();
+                                  toast({
+                                    title: "Deck deleted",
+                                    description: "The deck and its flashcards have been removed",
+                                  });
+                                } catch (error) {
+                                  console.error("Error deleting deck:", error);
+                                  toast({
+                                    title: "Error deleting deck",
+                                    description: "Failed to delete the deck",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }
+                            }}
+                            className="h-7 w-7 text-gray-500 hover:text-red-600"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+            
+            {/* Search bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
@@ -299,8 +481,8 @@ export default function FlashcardsPage() {
                                     {new Date(card.created_at).toLocaleDateString()}
                                   </div>
                                   <div className="flex items-center gap-1">
-                                    <MessageSquare className="h-3 w-3" />
-                                    {getChatTitle(card.chat_id)}
+                                    <Folder className="h-3 w-3" />
+                                    {decks.find(d => d.id === card.deck_id)?.title || "Unknown deck"}
                                   </div>
                                 </div>
                               </div>
