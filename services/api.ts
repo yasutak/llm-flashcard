@@ -55,21 +55,37 @@ export class ApiError extends Error {
   
   // Helper method to get validation errors
   getValidationErrors(): Array<{field: string; message: string}> | null {
-    if (!this.data?.errors || !Array.isArray(this.data.errors)) {
-      return null;
+    // Handle standard validation errors with errors array
+    if (this.data?.errors && Array.isArray(this.data.errors)) {
+      return this.data.errors.map(err => ({
+        field: err.path,
+        message: err.message
+      }));
     }
     
-    return this.data.errors.map(err => ({
-      field: err.path,
-      message: err.message
-    }));
+    // Handle conflict errors (e.g., username already exists)
+    if (this.status === 409 && this.data?.message === 'Username already exists') {
+      return [{
+        field: 'username',
+        message: 'Username already exists'
+      }];
+    }
+    
+    return null;
   }
   
   // Helper method to check if this is a validation error
   isValidationError(): boolean {
-    return this.status === 400 && 
-           this.data?.message === 'Validation Error' && 
-           Array.isArray(this.data?.errors);
+    // Standard validation errors
+    const isStandardValidation = this.status === 400 && 
+                                this.data?.message === 'Validation Error' && 
+                                Array.isArray(this.data?.errors);
+    
+    // Conflict errors (e.g., username already exists)
+    const isConflictError = this.status === 409 && 
+                           this.data?.message === 'Username already exists';
+    
+    return isStandardValidation || isConflictError;
   }
 }
 
