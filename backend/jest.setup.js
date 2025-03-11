@@ -1,7 +1,2 @@
-// Mock fetch globally
+// Jest setup file - just mock fetch
 global.fetch = jest.fn();
-
-// Reset mocks before each test
-beforeEach(() => {
-  jest.resetAllMocks();
-});
