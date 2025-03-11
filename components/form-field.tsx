@@ -36,8 +36,8 @@ export function FormField({
   const { formErrors, validateField, clearErrors } = useErrors()
   const [touched, setTouched] = useState(false)
   
-  // Get errors for this field
-  const errors = formErrors[formId]?.[name] || []
+  // Get error for this field
+  const error = formErrors[formId]?.[name]
   
   // Validate on blur
   const handleBlur = () => {
@@ -50,8 +50,8 @@ export function FormField({
     const newValue = e.target.value
     onChange(newValue)
     
-    // Clear errors when user types
-    if (errors.length > 0) {
+    // Clear error when user types
+    if (error) {
       clearErrors(formId, name)
     }
     
@@ -61,16 +61,7 @@ export function FormField({
     }
   }
   
-  // Initial validation on mount
-  useEffect(() => {
-    // Only run once on mount
-    if (rules.length > 0 && value) {
-      validateField(formId, name, value, rules)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Empty dependency array means it only runs once on mount
-  
-  // Cleanup on unmount
+  // Clear error when component unmounts
   useEffect(() => {
     return () => {
       clearErrors(formId, name)
@@ -93,16 +84,12 @@ export function FormField({
         placeholder={placeholder}
         required={required}
         autoComplete={autoComplete}
-      className={`border-blue-200 focus:border-blue-500 ${errors.length > 0 ? 'border-red-500' : ''} ${className}`}
-      {...props}
-    />
-    {errors.length > 0 && (
-      <div className="mt-1">
-        {errors.map((error, index) => (
-          <p key={index} className="text-xs text-red-500">{error}</p>
-        ))}
-      </div>
-    )}
+        className={`border-blue-200 focus:border-blue-500 ${error ? 'border-red-500' : ''} ${className}`}
+        {...props}
+      />
+      {error && (
+        <p className="text-xs text-red-500 mt-1">{error}</p>
+      )}
     </div>
   )
 }

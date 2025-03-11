@@ -55,39 +55,23 @@ export class ApiError extends Error {
   
   // Helper method to get validation errors
   getValidationErrors(): Array<{field: string; message: string}> | null {
-    const errors: Array<{field: string; message: string}> = [];
-    
     // Handle standard validation errors with errors array
     if (this.data?.errors && Array.isArray(this.data.errors)) {
-      this.data.errors.forEach(err => {
-        errors.push({
-          field: err.path,
-          message: err.message
-        });
-      });
+      return this.data.errors.map(err => ({
+        field: err.path,
+        message: err.message
+      }));
     }
     
     // Handle conflict errors (e.g., username already exists)
     if (this.status === 409 && this.data?.message === 'Username already exists') {
-      errors.push({
+      return [{
         field: 'username',
         message: 'Username already exists'
-      });
+      }];
     }
     
-    // Handle authentication errors
-    if (this.status === 401 && this.data?.message === 'Invalid username or password') {
-      errors.push({
-        field: 'username',
-        message: 'Invalid username or password'
-      });
-      errors.push({
-        field: 'password',
-        message: 'Invalid username or password'
-      });
-    }
-    
-    return errors.length > 0 ? errors : null;
+    return null;
   }
   
   // Helper method to check if this is a validation error
@@ -101,11 +85,7 @@ export class ApiError extends Error {
     const isConflictError = this.status === 409 && 
                            this.data?.message === 'Username already exists';
     
-    // Authentication errors
-    const isAuthError = this.status === 401 && 
-                       this.data?.message === 'Invalid username or password';
-    
-    return isStandardValidation || isConflictError || isAuthError;
+    return isStandardValidation || isConflictError;
   }
 }
 

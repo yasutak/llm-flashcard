@@ -3,28 +3,6 @@ export interface ValidationRule {
   message: string;
 }
 
-export interface ValidationResult {
-  valid: boolean;
-  errors: string[];
-}
-
-// Function to validate a value against multiple rules
-export function validateValue(value: string | undefined, rules: ValidationRule[]): ValidationResult {
-  const errors: string[] = [];
-  
-  // Check each rule
-  rules.forEach(rule => {
-    if (!rule.validate(value)) {
-      errors.push(rule.message);
-    }
-  });
-  
-  return {
-    valid: errors.length === 0,
-    errors
-  };
-}
-
 export const ValidationRules = {
   required: (message = "This field is required"): ValidationRule => ({
     validate: (value) => !!value && value.trim() !== '',
@@ -32,7 +10,7 @@ export const ValidationRules = {
   }),
   
   minLength: (length: number, message = `Must be at least ${length} characters`): ValidationRule => ({
-    validate: (value) => value !== undefined && value !== null && value.length >= length,
+    validate: (value) => !value || value.length >= length,
     message
   }),
   
@@ -46,7 +24,7 @@ export const ValidationRules = {
     message
   }),
   
-  match: (getCompareValue: () => string, message = "Values don't match"): ValidationRule => ({
+  match: (getCompareValue: () => string, message = "Values must match"): ValidationRule => ({
     validate: (value) => value === getCompareValue(),
     message
   }),

@@ -2,10 +2,10 @@
 
 import { createContext, useContext, useState, ReactNode } from "react"
 import { ApiError } from "@/services/api"
-import { ValidationRule, validateValue } from "@/types/validation"
+import { ValidationRule } from "@/types/validation"
 
 // Type definitions
-type FieldErrors = Record<string, string[]>
+type FieldErrors = Record<string, string>
 type FormErrors = Record<string, FieldErrors>
 
 interface ErrorContextType {
@@ -17,8 +17,6 @@ interface ErrorContextType {
   setApiErrors: (formId: string, error: ApiError) => void
   // Clear errors
   clearErrors: (formId: string, field?: string) => void
-  // Add a single error message
-  addError: (formId: string, field: string, message: string) => void
 }
 
 // Create the context
@@ -35,21 +33,21 @@ export function ErrorProvider({ children }: { children: ReactNode }) {
     value: string | undefined, 
     rules: ValidationRule[]
   ): boolean => {
-    // Validate against all rules
-    const result = validateValue(value, rules)
+    // Find the first rule that fails
+    const failedRule = rules.find(rule => !rule.validate(value))
     
     // Use functional state update to avoid stale state issues
     setFormErrors(prevErrors => {
       // Get current form errors or initialize empty object
       const currentFormErrors = {...(prevErrors[formId] || {})}
       
-      if (!result.valid) {
-        // Set all error messages
+      if (failedRule) {
+        // Set the error message
         return {
           ...prevErrors,
           [formId]: {
             ...currentFormErrors,
-            [field]: result.errors
+            [field]: failedRule.message
           }
         }
       } else {
@@ -76,7 +74,7 @@ export function ErrorProvider({ children }: { children: ReactNode }) {
       }
     })
     
-    return result.valid
+    return !failedRule
   }
 
   // Set errors from API responses
@@ -86,12 +84,8 @@ export function ErrorProvider({ children }: { children: ReactNode }) {
       if (validationErrors) {
         const fieldErrors: FieldErrors = {}
         
-        // Group errors by field
         validationErrors.forEach(err => {
-          if (!fieldErrors[err.field]) {
-            fieldErrors[err.field] = []
-          }
-          fieldErrors[err.field].push(err.message)
+          fieldErrors[err.field] = err.message
         })
         
         // Use functional state update
@@ -144,30 +138,13 @@ export function ErrorProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  // Add a single error message
-  const addError = (formId: string, field: string, message: string) => {
-    setFormErrors(prevErrors => {
-      const currentFormErrors = {...(prevErrors[formId] || {})}
-      const currentFieldErrors = currentFormErrors[field] || []
-      
-      return {
-        ...prevErrors,
-        [formId]: {
-          ...currentFormErrors,
-          [field]: [...currentFieldErrors, message]
-        }
-      }
-    })
-  }
-
   return (
     <ErrorContext.Provider
       value={{
         formErrors,
         validateField,
         setApiErrors,
-        clearErrors,
-        addError
+        clearErrors
       }}
     >
       {children}
