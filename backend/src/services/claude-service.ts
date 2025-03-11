@@ -78,6 +78,7 @@ export async function sendMessageToClaude(
     const messagePromise = client.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 4000,
+      system: "Always format your responses using Markdown syntax. Use headings, lists, code blocks, and other Markdown features to structure your response clearly. For code, always specify the language in code blocks.",
       messages: messages.map(msg => ({
         role: msg.role,
         content: [{ type: 'text', text: msg.content }]
