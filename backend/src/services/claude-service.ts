@@ -26,15 +26,19 @@ export async function sendMessageToClaude(
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json() as { error?: { message?: string } };
       console.error('Claude API error:', errorData);
       throw new Error(`Claude API error: ${errorData.error?.message || 'Unknown error'}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { content: Array<{ text: string }> };
     return data.content[0].text;
   } catch (error) {
     console.error('Error sending message to Claude:', error);
+    // Re-throw the original error if it's already a Claude API error
+    if (error instanceof Error && error.message.startsWith('Claude API error:')) {
+      throw error;
+    }
     throw new Error('Failed to communicate with Claude API');
   }
 }
@@ -88,12 +92,12 @@ Return your response as a JSON array of flashcard objects with "question" and "a
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json() as { error?: { message?: string } };
       console.error('Claude API error:', errorData);
       throw new Error(`Claude API error: ${errorData.error?.message || 'Unknown error'}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { content: Array<{ text: string }> };
     const responseText = data.content[0].text;
 
     // Extract the JSON array from the response
@@ -108,10 +112,16 @@ Return your response as a JSON array of flashcard objects with "question" and "a
       return flashcards;
     } catch (parseError) {
       console.error('Error parsing flashcards from Claude response:', parseError);
-      throw new Error('Failed to parse flashcards from Claude response');
+      throw new Error('No JSON array found in Claude response');
     }
   } catch (error) {
     console.error('Error generating flashcards:', error);
+    // Re-throw the original error if it's already a Claude API error or JSON parsing error
+    if (error instanceof Error && 
+        (error.message.startsWith('Claude API error:') || 
+         error.message === 'No JSON array found in Claude response')) {
+      throw error;
+    }
     throw new Error('Failed to generate flashcards');
   }
 }
