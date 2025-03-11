@@ -3,12 +3,14 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { BrainCircuit, MessageSquare, BookOpen, User, LogOut } from "lucide-react"
+import { BrainCircuit, MessageSquare, BookOpen, User, LogOut, LayoutPanelLeft } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
+import { useChat } from "@/contexts/chat-context"
 
 export function MainNav() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
+  const { currentChat } = useChat()
 
   return (
     <div className="flex h-16 items-center border-b bg-white px-4 dark:bg-gray-950">
@@ -28,7 +30,7 @@ export function MainNav() {
             <span className="hidden md:inline">Chat</span>
           </Button>
         </Link>
-        <Link href="/flashcards">
+        <Link href={currentChat ? `/flashcards?chatId=${currentChat.id}` : "/flashcards"}>
           <Button
             variant={pathname === "/flashcards" ? "default" : "ghost"}
             className={pathname === "/flashcards" ? "bg-blue-600 hover:bg-blue-700" : ""}
@@ -36,6 +38,16 @@ export function MainNav() {
           >
             <BookOpen className="h-5 w-5 md:mr-2" />
             <span className="hidden md:inline">Flashcards</span>
+          </Button>
+        </Link>
+        <Link href={currentChat ? `/chat-with-flashcards?chatId=${currentChat.id}` : "/chat-with-flashcards"}>
+          <Button
+            variant={pathname === "/chat-with-flashcards" ? "default" : "ghost"}
+            className={pathname === "/chat-with-flashcards" ? "bg-blue-600 hover:bg-blue-700" : ""}
+            size="sm"
+          >
+            <LayoutPanelLeft className="h-5 w-5 md:mr-2" />
+            <span className="hidden md:inline">Side-by-side</span>
           </Button>
         </Link>
       </nav>
@@ -52,4 +64,3 @@ export function MainNav() {
     </div>
   )
 }
-
