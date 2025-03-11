@@ -16,6 +16,13 @@ export async function createChat(title = "New Chat"): Promise<Chat> {
   })
 }
 
+export async function updateChat(chatId: string, title: string): Promise<Chat> {
+  return fetchWithAuth<Chat>(`/chats/${chatId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  })
+}
+
 export async function deleteChat(chatId: string): Promise<void> {
   await fetchWithAuth(`/chats/${chatId}`, {
     method: "DELETE",
@@ -28,4 +35,3 @@ export async function sendMessage(chatId: string, content: string): Promise<Mess
     body: JSON.stringify({ content }),
   })
 }
-

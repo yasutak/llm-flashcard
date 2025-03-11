@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
 import type { Chat, Message } from "@/types"
-import { getChats, getChat, createChat, sendMessage } from "@/services/chat-service"
+import { getChats, getChat, createChat, updateChat, sendMessage } from "@/services/chat-service"
 import { generateFlashcardsFromMessage } from "@/services/flashcard-service"
 import { useAuth } from "./auth-context"
 import { useToast } from "@/hooks/use-toast"
@@ -19,6 +19,7 @@ interface ChatContextType {
   selectChat: (chatId: string) => Promise<void>
   startNewChat: () => Promise<Chat | undefined>
   sendChatMessage: (content: string) => Promise<void>
+  updateChatTitle: (chatId: string, title: string) => Promise<Chat>
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined)
@@ -82,6 +83,32 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       return newChat
     } catch (error) {
       console.error("Error creating new chat:", error)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const updateChatTitle = async (chatId: string, title: string) => {
+    setIsLoading(true)
+    try {
+      const updatedChat = await updateChat(chatId, title)
+      
+      // Update the chat in the chats list
+      setChats(prevChats => 
+        prevChats.map(chat => 
+          chat.id === chatId ? { ...chat, title: updatedChat.title } : chat
+        )
+      )
+      
+      // Update the current chat if it's the one being renamed
+      if (currentChat && currentChat.id === chatId) {
+        setCurrentChat({ ...currentChat, title: updatedChat.title })
+      }
+      
+      return updatedChat
+    } catch (error) {
+      console.error("Error updating chat title:", error)
       throw error
     } finally {
       setIsLoading(false)
@@ -176,6 +203,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         selectChat,
         startNewChat,
         sendChatMessage,
+        updateChatTitle,
       }}
     >
       {children}
