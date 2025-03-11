@@ -61,18 +61,21 @@ export function FormField({
     }
   }
   
-  // Validate on mount and clear on unmount
+  // Initial validation on mount
   useEffect(() => {
-    // Validate on mount if there are rules
+    // Only run once on mount
     if (rules.length > 0 && value) {
       validateField(formId, name, value, rules)
     }
-    
-    // Clear on unmount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty dependency array means it only runs once on mount
+  
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       clearErrors(formId, name)
     }
-  }, [formId, name, rules, value, validateField, clearErrors])
+  }, [formId, name, clearErrors])
   
   return (
     <div className="grid gap-2">
