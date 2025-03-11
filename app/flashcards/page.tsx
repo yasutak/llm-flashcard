@@ -169,28 +169,29 @@ export default function FlashcardsPage() {
                   <div className="flex flex-col items-center">
                     <div className="w-full max-w-xl mb-4">
                       <Card
-                        className={`h-64 cursor-pointer transition-all duration-500 transform ${
-                          flipped ? "rotate-y-180" : ""
-                        }`}
+                        className="h-64 cursor-pointer"
                         onClick={handleFlip}
                       >
-                        <CardContent className="p-6 h-full flex items-center justify-center">
+                        <CardContent className="p-6 h-full flex items-center justify-center relative">
+                          {/* Question side */}
                           <div
-                            className={`w-full transition-opacity duration-300 ${flipped ? "opacity-0" : "opacity-100"}`}
+                            className={`w-full transition-all duration-500 ${
+                              flipped ? "opacity-0 absolute" : "opacity-100"
+                            }`}
                           >
                             <h3 className="text-xl font-semibold text-center mb-2">Question:</h3>
                             <p className="text-center text-lg">{filteredCards[currentIndex]?.question}</p>
                             <p className="text-center text-xs text-gray-500 mt-4">(Click to reveal answer)</p>
                           </div>
+                          
+                          {/* Answer side */}
                           <div
-                            className={`w-full absolute inset-0 p-6 flex items-center justify-center transition-opacity duration-300 ${
-                              flipped ? "opacity-100" : "opacity-0 pointer-events-none"
-                            } ${flipped ? "rotate-180" : ""}`}
+                            className={`w-full transition-all duration-500 ${
+                              flipped ? "opacity-100" : "opacity-0 absolute pointer-events-none"
+                            }`}
                           >
-                            <div className={flipped ? "rotate-180" : ""}>
-                              <h3 className="text-xl font-semibold text-center mb-2">Answer:</h3>
-                              <p className="text-center text-lg">{filteredCards[currentIndex]?.answer}</p>
-                            </div>
+                            <h3 className="text-xl font-semibold text-center mb-2">Answer:</h3>
+                            <p className="text-center text-lg">{filteredCards[currentIndex]?.answer}</p>
                           </div>
                         </CardContent>
                       </Card>
