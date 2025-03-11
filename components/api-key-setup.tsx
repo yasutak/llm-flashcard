@@ -11,10 +11,12 @@ import { storeApiKey } from "@/services/auth-service"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { ApiError } from "@/services/api"
 
 export function ApiKeySetup() {
   const [apiKey, setApiKey] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { setHasApiKey } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
@@ -22,6 +24,7 @@ export function ApiKeySetup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
     try {
       await storeApiKey(apiKey)
@@ -33,11 +36,36 @@ export function ApiKeySetup() {
       // Redirect to chat page after successful API key setup
       router.push("/chat")
     } catch (error) {
-      toast({
-        title: "Error saving API key",
-        description: error instanceof Error ? error.message : "Please check your API key and try again",
-        variant: "destructive",
-      })
+      if (error instanceof ApiError && error.isValidationError()) {
+        const validationErrors = error.getValidationErrors();
+        if (validationErrors && validationErrors.length > 0) {
+          // Find the error for the api_key field or use the first error
+          const apiKeyError = validationErrors.find(err => err.field === 'api_key') || validationErrors[0];
+          setError(apiKeyError.message);
+        } else {
+          setError("Invalid API key format");
+        }
+        
+        toast({
+          title: "Validation Error",
+          description: "Please provide a valid API key",
+          variant: "destructive",
+        });
+      } else {
+        let errorMessage = "Please check your API key and try again";
+        
+        if (error instanceof ApiError) {
+          errorMessage = error.getDetailedMessage();
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        
+        toast({
+          title: "Error saving API key",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false)
     }
@@ -65,12 +93,19 @@ export function ApiKeySetup() {
                 id="apiKey"
                 type="password"
                 value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                  setError(null); // Clear error when user types
+                }}
                 placeholder="sk-ant-..."
                 required
-                className="border-blue-200 focus:border-blue-500"
+                className={`border-blue-200 focus:border-blue-500 ${error ? 'border-red-500' : ''}`}
               />
-              <p className="text-xs text-muted-foreground">Your API key is stored securely and never shared.</p>
+              {error ? (
+                <p className="text-xs text-red-500 mt-1">{error}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Your API key is stored securely and never shared.</p>
+              )}
             </div>
           </div>
         </form>

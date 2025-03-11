@@ -44,7 +44,40 @@ If you're still experiencing issues, try the following:
 
 4. **Check the browser console**: Open the browser console to see if there are any error messages that might help diagnose the issue.
 
+## Error Handling
+
+The application now provides more detailed error messages to help diagnose issues. When an API error occurs, the error message will include:
+
+- The HTTP status code and status text
+- The specific error message from the server
+- Additional details if available
+
+This makes it easier to identify and fix issues, especially when working with external APIs like Anthropic.
+
+### Validation Errors
+
+The application now displays field-specific validation errors directly in the form. When a validation error occurs:
+
+1. The invalid field is highlighted with a red border
+2. An error message is displayed below the field
+3. A toast notification is shown with a general validation error message
+
+This helps users quickly identify and fix validation issues without having to guess what went wrong.
+
 ## Recent Changes
+
+### 2025-03-12: Improved Validation Error Handling
+
+- Added support for displaying Zod validation errors in the frontend
+- Updated the backend to properly format and return validation errors
+- Modified form components to display field-specific validation errors
+- Improved the user experience by highlighting invalid fields
+
+### 2025-03-12: Improved Error Handling
+
+- Added a custom ApiError class that provides more detailed error information
+- Updated all components to display detailed error messages
+- Improved error logging in the console with request and response details
 
 ### 2025-03-12: Updated Claude Service to use Anthropic SDK
 

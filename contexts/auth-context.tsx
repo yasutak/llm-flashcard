@@ -47,7 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("auth_token", response.token)
       localStorage.setItem("user", JSON.stringify(response.user))
       setUser(response.user)
-      setHasApiKey(response.user.has_api_key)
+      // Check if API key exists after login
+      const hasKey = await checkApiKey()
+      setHasApiKey(hasKey)
       router.push("/api-key")
     } catch (error) {
       throw error
@@ -63,7 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("auth_token", response.token)
       localStorage.setItem("user", JSON.stringify(response.user))
       setUser(response.user)
-      setHasApiKey(response.user.has_api_key)
+      // Check if API key exists after registration
+      const hasKey = await checkApiKey()
+      setHasApiKey(hasKey)
       router.push("/api-key")
     } catch (error) {
       throw error

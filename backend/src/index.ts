@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 import { prettyJSON } from 'hono/pretty-json';
+import { HTTPException } from 'hono/http-exception';
 import { errorHandler } from './middleware/error-handler';
 import authRoutes from './routes/auth';
 import chatRoutes from './routes/chats';
@@ -26,7 +27,13 @@ app.use('*', secureHeaders());
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:3000', 'https://llm-flashcard.pages.dev'],
+    // Allow all localhost origins with different ports and the production domain
+    origin: (origin) => {
+      if (origin && (origin.startsWith('http://localhost:') || origin === 'https://llm-flashcard.pages.dev')) {
+        return origin;
+      }
+      return 'http://localhost:3000'; // Default fallback
+    },
     allowHeaders: ['Content-Type', 'Authorization'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     exposeHeaders: ['Content-Length'],
@@ -61,7 +68,8 @@ app.notFound((c) => {
 app.onError((err, c) => {
   console.error(`${err}`);
   
-  const status = err.status || 500;
+  // Check if the error is an HTTPException
+  const status = err instanceof HTTPException ? err.status : 500;
   const message = status === 500 ? 'Internal Server Error' : err.message;
   
   return c.json(

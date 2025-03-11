@@ -6,7 +6,6 @@ import { useState, useRef, useEffect } from "react"
 import { MainNav } from "@/components/main-nav"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { ApiKeySetup } from "@/components/api-key-setup"
 import { Send, Bot, UserIcon, Lightbulb, Plus, MessageSquare } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useChat } from "@/contexts/chat-context"
@@ -15,6 +14,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { ApiError } from "@/services/api"
 
 export default function ChatPage() {
   const [input, setInput] = useState("")
@@ -40,9 +40,17 @@ export default function ChatPage() {
       await sendChatMessage(input)
       setInput("")
     } catch (error) {
+      let errorMessage = "Failed to send your message. Please try again.";
+      
+      if (error instanceof ApiError) {
+        errorMessage = error.getDetailedMessage();
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error sending message",
-        description: "Failed to send your message. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     }
@@ -65,9 +73,17 @@ export default function ChatPage() {
         description: "Flashcards have been created from this conversation",
       })
     } catch (error) {
+      let errorMessage = "Failed to generate flashcards. Please try again.";
+      
+      if (error instanceof ApiError) {
+        errorMessage = error.getDetailedMessage();
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error generating flashcards",
-        description: "Failed to generate flashcards. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     }
@@ -127,7 +143,7 @@ export default function ChatPage() {
                   </p>
                 </div>
               ) : (
-                messages.map((message, index) => (
+                messages.map((message) => (
                   <div
                     key={message.id}
                     className={`flex items-start gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}

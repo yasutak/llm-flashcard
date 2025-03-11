@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast"
 import type { Flashcard } from "@/types"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ApiError } from "@/services/api"
 
 export default function FlashcardsPage() {
   const { flashcards, isLoading, fetchFlashcards, updateCard, deleteCard } = useFlashcards()
@@ -70,9 +71,17 @@ export default function FlashcardsPage() {
         description: "Your changes have been saved",
       })
     } catch (error) {
+      let errorMessage = "Failed to update the flashcard. Please try again.";
+      
+      if (error instanceof ApiError) {
+        errorMessage = error.getDetailedMessage();
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error updating flashcard",
-        description: "Failed to update the flashcard. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     }
@@ -89,9 +98,17 @@ export default function FlashcardsPage() {
         description: "The flashcard has been removed",
       })
     } catch (error) {
+      let errorMessage = "Failed to delete the flashcard. Please try again.";
+      
+      if (error instanceof ApiError) {
+        errorMessage = error.getDetailedMessage();
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error deleting flashcard",
-        description: "Failed to delete the flashcard. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     }
@@ -285,4 +302,3 @@ export default function FlashcardsPage() {
     </div>
   )
 }
-

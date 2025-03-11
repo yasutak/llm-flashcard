@@ -16,7 +16,13 @@ router.use('*', authMiddleware());
 
 // Validation schema for API key
 const apiKeySchema = z.object({
-  api_key: z.string().min(1),
+  api_key: z.string()
+    .min(20, "API key must be at least 20 characters long")
+    .regex(/^sk-ant-/, "API key must start with 'sk-ant-'")
+    .refine(
+      (val) => !val.includes(" "), 
+      "API key cannot contain spaces"
+    ),
 });
 
 // Store API key route
