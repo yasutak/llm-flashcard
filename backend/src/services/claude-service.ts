@@ -19,7 +19,7 @@ export async function sendMessageToClaude(
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-sonnet-20240229',
+        model: 'claude-3-7-sonnet-latest',
         max_tokens: 4000,
         messages,
       }),
@@ -80,7 +80,7 @@ Return your response as a JSON array of flashcard objects with "question" and "a
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-sonnet-20240229',
+        model: 'claude-3-7-sonnet-latest',
         max_tokens: 4000,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.2,
