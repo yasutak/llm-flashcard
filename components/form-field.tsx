@@ -64,11 +64,9 @@ export function FormField({
   // Clear error when component unmounts
   useEffect(() => {
     return () => {
-      if (error) {
-        clearErrors(formId, name)
-      }
+      clearErrors(formId, name)
     }
-  }, [formId, name, error, clearErrors])
+  }, [formId, name, clearErrors])
   
   return (
     <div className="grid gap-2">

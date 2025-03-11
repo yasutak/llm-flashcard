@@ -33,35 +33,48 @@ export function ErrorProvider({ children }: { children: ReactNode }) {
     value: string | undefined, 
     rules: ValidationRule[]
   ): boolean => {
-    // Get current form errors or initialize empty object
-    const currentFormErrors = formErrors[formId] || {}
-    
     // Find the first rule that fails
     const failedRule = rules.find(rule => !rule.validate(value))
     
-    if (failedRule) {
-      // Set the error message
-      setFormErrors({
-        ...formErrors,
-        [formId]: {
-          ...currentFormErrors,
-          [field]: failedRule.message
+    // Use functional state update to avoid stale state issues
+    setFormErrors(prevErrors => {
+      // Get current form errors or initialize empty object
+      const currentFormErrors = {...(prevErrors[formId] || {})}
+      
+      if (failedRule) {
+        // Set the error message
+        return {
+          ...prevErrors,
+          [formId]: {
+            ...currentFormErrors,
+            [field]: failedRule.message
+          }
         }
-      })
-      return false
-    } else {
-      // Clear the error if validation passes
-      if (currentFormErrors[field]) {
-        const updatedFormErrors = { ...currentFormErrors }
-        delete updatedFormErrors[field]
+      } else {
+        // Clear the error if validation passes
+        if (currentFormErrors[field]) {
+          delete currentFormErrors[field]
+          
+          // If no more errors for this form, remove the form entry
+          if (Object.keys(currentFormErrors).length === 0) {
+            const newErrors = {...prevErrors}
+            delete newErrors[formId]
+            return newErrors
+          }
+          
+          // Otherwise return updated form errors
+          return {
+            ...prevErrors,
+            [formId]: currentFormErrors
+          }
+        }
         
-        setFormErrors({
-          ...formErrors,
-          [formId]: updatedFormErrors
-        })
+        // No changes needed
+        return prevErrors
       }
-      return true
-    }
+    })
+    
+    return !failedRule
   }
 
   // Set errors from API responses
@@ -75,35 +88,54 @@ export function ErrorProvider({ children }: { children: ReactNode }) {
           fieldErrors[err.field] = err.message
         })
         
-        setFormErrors({
-          ...formErrors,
+        // Use functional state update
+        setFormErrors(prevErrors => ({
+          ...prevErrors,
           [formId]: fieldErrors
-        })
+        }))
       }
     }
   }
 
   // Clear errors
   const clearErrors = (formId: string, field?: string) => {
-    if (field) {
-      // Clear a specific field error
-      const currentFormErrors = formErrors[formId]
-      if (currentFormErrors && currentFormErrors[field]) {
-        const updatedFormErrors = { ...currentFormErrors }
-        delete updatedFormErrors[field]
-        
-        setFormErrors({
-          ...formErrors,
-          [formId]: updatedFormErrors
-        })
+    // Use functional state update
+    setFormErrors(prevErrors => {
+      // If the form doesn't exist in errors, no changes needed
+      if (!prevErrors[formId]) {
+        return prevErrors
       }
-    } else {
-      // Clear all errors for a form
-      const updatedFormErrors = { ...formErrors }
-      delete updatedFormErrors[formId]
       
-      setFormErrors(updatedFormErrors)
-    }
+      if (field) {
+        // Clear a specific field error
+        const currentFormErrors = {...prevErrors[formId]}
+        
+        if (currentFormErrors[field]) {
+          delete currentFormErrors[field]
+          
+          // If no more errors for this form, remove the form entry
+          if (Object.keys(currentFormErrors).length === 0) {
+            const newErrors = {...prevErrors}
+            delete newErrors[formId]
+            return newErrors
+          }
+          
+          // Otherwise return updated form errors
+          return {
+            ...prevErrors,
+            [formId]: currentFormErrors
+          }
+        }
+        
+        // No changes needed
+        return prevErrors
+      } else {
+        // Clear all errors for a form
+        const newErrors = {...prevErrors}
+        delete newErrors[formId]
+        return newErrors
+      }
+    })
   }
 
   return (
