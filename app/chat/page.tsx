@@ -8,7 +8,7 @@ import remarkGfm from "remark-gfm"
 import { MainNav } from "@/components/main-nav"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Send, Bot, UserIcon, Lightbulb, Plus, MessageSquare } from "lucide-react"
+import { Send, Bot, UserIcon, Lightbulb, Plus, MessageSquare, Copy, Check } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useChat } from "@/contexts/chat-context"
 import { useFlashcards } from "@/contexts/flashcard-context"
@@ -17,6 +17,40 @@ import { useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ApiError } from "@/services/api"
+
+// Copy button component
+function CopyButton({ content }: { content: string }) {
+  const [copied, setCopied] = useState(false)
+  
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopied(true)
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => {
+        setCopied(false)
+      }, 2000)
+    } catch (err) {
+      console.error('Failed to copy text: ', err)
+    }
+  }
+  
+  return (
+    <button 
+      onClick={handleCopy}
+      className="absolute top-0 right-0 p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+      aria-label="Copy to clipboard"
+      title="Copy to clipboard"
+    >
+      {copied ? (
+        <Check className="h-4 w-4 text-green-500" />
+      ) : (
+        <Copy className="h-4 w-4" />
+      )}
+    </button>
+  )
+}
 
 export default function ChatPage() {
   const [input, setInput] = useState("")
@@ -163,7 +197,10 @@ export default function ChatPage() {
                       {message.role === "user" ? (
                         <p className="whitespace-pre-wrap">{message.content}</p>
                       ) : (
-                        <div className="markdown-content">
+                        <div className="markdown-content relative">
+                          {/* Copy button for assistant messages */}
+                          <CopyButton content={message.content} />
+                          
                           <ReactMarkdown 
                             remarkPlugins={[remarkGfm]}
                             components={{
