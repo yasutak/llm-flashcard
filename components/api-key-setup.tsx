@@ -10,12 +10,14 @@ import { Key } from "lucide-react"
 import { storeApiKey } from "@/services/auth-service"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
 export function ApiKeySetup() {
   const [apiKey, setApiKey] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { setHasApiKey } = useAuth()
   const { toast } = useToast()
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,6 +30,8 @@ export function ApiKeySetup() {
         title: "API key saved",
         description: "Your Anthropic API key has been securely stored",
       })
+      // Redirect to chat page after successful API key setup
+      router.push("/chat")
     } catch (error) {
       toast({
         title: "Error saving API key",
@@ -79,4 +83,3 @@ export function ApiKeySetup() {
     </Card>
   )
 }
-

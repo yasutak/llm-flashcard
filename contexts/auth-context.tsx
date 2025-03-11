@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("user", JSON.stringify(response.user))
       setUser(response.user)
       setHasApiKey(response.user.has_api_key)
-      router.push("/chat")
+      router.push("/api-key")
     } catch (error) {
       throw error
     } finally {
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("user", JSON.stringify(response.user))
       setUser(response.user)
       setHasApiKey(response.user.has_api_key)
-      router.push("/chat")
+      router.push("/api-key")
     } catch (error) {
       throw error
     } finally {
@@ -112,4 +112,3 @@ export function useAuth() {
   }
   return context
 }
-

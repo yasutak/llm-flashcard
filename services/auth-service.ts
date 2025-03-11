@@ -1,5 +1,5 @@
-import type { AuthResponse, LoginCredentials, RegisterCredentials } from "@/types"
-import { fetchWithAuth } from "./api"
+import type { AuthResponse, LoginCredentials, RegisterCredentials } from "@/types";
+import { fetchWithAuth } from "./api";
 
 export async function login(credentials: LoginCredentials): Promise<AuthResponse> {
   return fetchWithAuth<AuthResponse>("/auth/login", {
@@ -9,9 +9,12 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
 }
 
 export async function register(credentials: RegisterCredentials): Promise<AuthResponse> {
+  // Extract only the fields expected by the backend (username and password)
+  const { username, password } = credentials;
+  
   return fetchWithAuth<AuthResponse>("/auth/register", {
     method: "POST",
-    body: JSON.stringify(credentials),
+    body: JSON.stringify({ username, password }),
   })
 }
 
@@ -37,4 +40,3 @@ export async function checkApiKey(): Promise<boolean> {
     return false
   }
 }
-

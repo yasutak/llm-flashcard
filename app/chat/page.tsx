@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useChat } from "@/contexts/chat-context"
 import { useFlashcards } from "@/contexts/flashcard-context"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
@@ -22,6 +23,7 @@ export default function ChatPage() {
   const { currentChat, messages, sendingMessage, sendChatMessage, startNewChat, chats, selectChat } = useChat()
   const { generateCardsFromChat } = useFlashcards()
   const { toast } = useToast()
+  const router = useRouter()
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -71,15 +73,14 @@ export default function ChatPage() {
     }
   }
 
+  useEffect(() => {
+    if (!hasApiKey) {
+      router.push("/api-key")
+    }
+  }, [hasApiKey, router])
+
   if (!hasApiKey) {
-    return (
-      <div className="flex min-h-screen flex-col">
-        <MainNav />
-        <div className="flex flex-1 items-center justify-center bg-gradient-to-b from-blue-50 to-white p-4">
-          <ApiKeySetup />
-        </div>
-      </div>
-    )
+    return null // Return null while redirecting
   }
 
   return (
@@ -213,4 +214,3 @@ export default function ChatPage() {
     </div>
   )
 }
-
