@@ -391,6 +391,107 @@ Return your response as a JSON array of flashcard objects with "question" and "a
  * @param apiKey The Anthropic API key to verify
  * @returns True if the API key is valid, false otherwise
  */
+/**
+ * Generate a title for a chat based on the first assistant response
+ * @param apiKey The Anthropic API key
+ * @param message The assistant's first response
+ * @returns A generated title for the chat
+ */
+export async function generateChatTitle(
+  apiKey: string,
+  message: string
+): Promise<string> {
+  // Validate API key format
+  if (!apiKey || !apiKey.startsWith('sk-ant-')) {
+    console.error('Invalid API key format:', apiKey ? apiKey.substring(0, 10) + '...' : 'undefined');
+    throw new ClaudeApiError('Invalid API key format. API key should start with sk-ant-', 401);
+  }
+  
+  // Validate message
+  if (!message || message.trim().length === 0) {
+    console.error('Empty message provided for title generation');
+    throw new Error('Cannot generate title from an empty message');
+  }
+  
+  console.log('Generating title from assistant message');
+  
+  try {
+    // Create a prompt for title generation
+    const prompt = `
+You are an expert at creating concise, descriptive titles.
+
+Review the following content and create a short, descriptive title that captures the main topic or theme.
+The title should be no more than 5-7 words.
+
+Content:
+${message}
+
+Return only the title text, with no additional formatting or explanation.
+`;
+
+    // Create Anthropic client
+    const client = createAnthropicClient(apiKey);
+    
+    // Create a timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new ClaudeTimeoutError()), API_TIMEOUT_MS);
+    });
+    
+    // Create the message request promise
+    const messagePromise = client.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 100,
+      messages: [{ 
+        role: 'user', 
+        content: [{ type: 'text', text: prompt }]
+      }],
+      temperature: 0.2,
+    });
+    
+    // Race the message request against the timeout
+    const result = await Promise.race([messagePromise, timeoutPromise]);
+    
+    // Extract text from the content block
+    const contentBlock = result.content[0];
+    if (!('text' in contentBlock)) {
+      throw new ClaudeApiError('Unexpected response format from Claude API', 500);
+    }
+    
+    const title = contentBlock.text.trim();
+    console.log('Generated title:', title);
+    
+    return title;
+  } catch (error) {
+    // Handle timeout error
+    if (error instanceof ClaudeTimeoutError) {
+      console.error('Claude API request for title generation timed out after', API_TIMEOUT_MS, 'ms');
+      throw error;
+    }
+    
+    // Handle Anthropic API errors
+    if (error instanceof Error && 'status' in error) {
+      const apiError = error as { status: number; message: string };
+      console.error('Claude API error during title generation:', {
+        status: apiError.status,
+        message: apiError.message,
+        error: error
+      });
+      
+      throw new ClaudeApiError(
+        `Claude API error: ${apiError.message || 'Unknown error'}`,
+        apiError.status || 500
+      );
+    }
+    
+    // Log and wrap other errors
+    console.error('Error generating title:', error);
+    
+    throw new ClaudeNetworkError(
+      error instanceof Error ? error.message : 'Failed to generate title'
+    );
+  }
+}
+
 export async function verifyApiKey(apiKey: string): Promise<boolean> {
   // Basic format validation
   if (!apiKey || !apiKey.startsWith('sk-ant-')) {

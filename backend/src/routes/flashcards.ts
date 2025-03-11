@@ -15,14 +15,18 @@ router.use('*', authMiddleware());
 
 // Validation schemas
 const createFlashcardSchema = z.object({
-  chat_id: z.string().min(1),
+  deck_id: z.string().min(1),
   question: z.string().min(1),
   answer: z.string().min(1),
+  difficulty: z.number().min(0).max(5).optional(),
 });
 
 const updateFlashcardSchema = z.object({
   question: z.string().min(1).optional(),
   answer: z.string().min(1).optional(),
+  difficulty: z.number().min(0).max(5).optional(),
+  review_count: z.number().min(0).optional(),
+  last_reviewed: z.number().optional(),
 });
 
 // Get all flashcards for the current user
@@ -60,11 +64,23 @@ router.get('/chat/:chatId', async (c) => {
       throw new HTTPException(404, { message: 'Chat not found' });
     }
     
-    // Get the flashcards
+    // Get the deck for this chat
+    const deck = await queryOne(
+      c.env.DB,
+      'SELECT id FROM decks WHERE chat_id = ? AND user_id = ?',
+      [chatId, userId]
+    );
+    
+    if (!deck) {
+      // If no deck exists, return an empty array
+      return c.json([]);
+    }
+    
+    // Get the flashcards for this deck
     const flashcards = await queryAll<Flashcard>(
       c.env.DB,
-      'SELECT * FROM flashcards WHERE chat_id = ? AND user_id = ? ORDER BY updated_at DESC',
-      [chatId, userId]
+      'SELECT * FROM flashcards WHERE deck_id = ? AND user_id = ? ORDER BY updated_at DESC',
+      [deck.id, userId]
     );
     
     return c.json(flashcards);
@@ -77,24 +93,58 @@ router.get('/chat/:chatId', async (c) => {
   }
 });
 
+// Get flashcards for a specific deck
+router.get('/deck/:deckId', async (c) => {
+  const userId = c.get('userId');
+  const deckId = c.req.param('deckId');
+  
+  try {
+    // Check if the deck exists and belongs to the user
+    const deck = await queryOne(
+      c.env.DB,
+      'SELECT id FROM decks WHERE id = ? AND user_id = ?',
+      [deckId, userId]
+    );
+    
+    if (!deck) {
+      throw new HTTPException(404, { message: 'Deck not found' });
+    }
+    
+    // Get the flashcards
+    const flashcards = await queryAll<Flashcard>(
+      c.env.DB,
+      'SELECT * FROM flashcards WHERE deck_id = ? AND user_id = ? ORDER BY updated_at DESC',
+      [deckId, userId]
+    );
+    
+    return c.json(flashcards);
+  } catch (error) {
+    if (error instanceof HTTPException) {
+      throw error;
+    }
+    console.error('Error fetching flashcards for deck:', error);
+    throw new HTTPException(500, { message: 'Internal server error' });
+  }
+});
+
 // Create a new flashcard
 router.post(
   '/',
   zValidator('json', createFlashcardSchema),
   async (c) => {
-    const { chat_id, question, answer } = c.req.valid('json') as CreateFlashcardRequest;
+    const { deck_id, question, answer, difficulty } = c.req.valid('json') as CreateFlashcardRequest;
     const userId = c.get('userId');
     
     try {
-      // Check if the chat exists and belongs to the user
-      const chat = await queryOne(
+      // Check if the deck exists and belongs to the user
+      const deck = await queryOne(
         c.env.DB,
-        'SELECT id FROM chats WHERE id = ? AND user_id = ?',
-        [chat_id, userId]
+        'SELECT id FROM decks WHERE id = ? AND user_id = ?',
+        [deck_id, userId]
       );
       
-      if (!chat) {
-        throw new HTTPException(404, { message: 'Chat not found' });
+      if (!deck) {
+        throw new HTTPException(404, { message: 'Deck not found' });
       }
       
       // Generate a unique ID
@@ -105,18 +155,20 @@ router.post(
       
       // Insert the new flashcard
       await c.env.DB.prepare(
-        'INSERT INTO flashcards (id, user_id, chat_id, question, answer, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO flashcards (id, user_id, deck_id, question, answer, difficulty, review_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
       )
-        .bind(flashcardId, userId, chat_id, question, answer, now, now)
+        .bind(flashcardId, userId, deck_id, question, answer, difficulty || 0, 0, now, now)
         .run();
       
       // Return the new flashcard
       return c.json({
         id: flashcardId,
         user_id: userId,
-        chat_id,
+        deck_id,
         question,
         answer,
+        difficulty: difficulty || 0,
+        review_count: 0,
         created_at: now,
         updated_at: now,
       });
@@ -157,11 +209,14 @@ router.put(
       // Update the flashcard
       const question = updates.question ?? flashcard.question;
       const answer = updates.answer ?? flashcard.answer;
+      const difficulty = updates.difficulty ?? flashcard.difficulty ?? 0;
+      const review_count = updates.review_count ?? flashcard.review_count ?? 0;
+      const last_reviewed = updates.last_reviewed ?? flashcard.last_reviewed;
       
       await c.env.DB.prepare(
-        'UPDATE flashcards SET question = ?, answer = ?, updated_at = ? WHERE id = ?'
+        'UPDATE flashcards SET question = ?, answer = ?, difficulty = ?, review_count = ?, last_reviewed = ?, updated_at = ? WHERE id = ?'
       )
-        .bind(question, answer, now, flashcardId)
+        .bind(question, answer, difficulty, review_count, last_reviewed, now, flashcardId)
         .run();
       
       // Return the updated flashcard
@@ -169,6 +224,9 @@ router.put(
         ...flashcard,
         question,
         answer,
+        difficulty,
+        review_count,
+        last_reviewed,
         updated_at: now,
       });
     } catch (error) {
