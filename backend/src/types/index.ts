@@ -89,6 +89,7 @@ export interface Env {
   DB: D1Database;
   JWT_SECRET: string;
   ENCRYPTION_KEY: string;
+  [key: string]: any; // Add index signature
 }
 
 // Extend Hono's Context type to include our custom properties

@@ -1,138 +1,193 @@
-import { verifyApiKey, sendMessageToClaude, generateFlashcardsFromConversation } from '../../services/claude-service';
+import { 
+  verifyApiKey, 
+  sendMessageToClaude, 
+  generateFlashcardsFromConversation,
+  ClaudeApiError,
+  ClaudeNetworkError,
+  ClaudeTimeoutError
+} from '../../services/claude-service';
 
-// Mock the global fetch function
-const mockFetch = global.fetch as jest.Mock;
+// Mock the Anthropic SDK
+jest.mock('@anthropic-ai/sdk', () => {
+  const mockMessagesCreate = jest.fn();
+  const mockModelsList = jest.fn();
+  
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(() => ({
+      messages: {
+        create: mockMessagesCreate
+      },
+      models: {
+        list: mockModelsList
+      }
+    })),
+    APIError: class APIError extends Error {
+      status: number;
+      constructor(message: string, status = 400) {
+        super(message);
+        this.name = 'APIError';
+        this.status = status;
+      }
+    }
+  };
+});
+
+// Import the mocked Anthropic SDK
+import Anthropic from '@anthropic-ai/sdk';
 
 describe('Claude Service', () => {
   const mockApiKey = 'sk-ant-api03-test-key';
+  const mockAnthropicInstance = {
+    messages: {
+      create: jest.fn().mockImplementation(() => {})
+    },
+    models: {
+      list: jest.fn().mockImplementation(() => {})
+    }
+  };
   
   beforeEach(() => {
-    mockFetch.mockClear();
+    jest.clearAllMocks();
+    (Anthropic as unknown as jest.Mock).mockReturnValue(mockAnthropicInstance);
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(global, 'setTimeout').mockImplementation((cb) => {
+      return 123 as any; // Just return a number for the timeout ID
+    });
   });
   
   describe('verifyApiKey', () => {
     it('should return true for a valid API key', async () => {
       // Mock a successful response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: [
-            { id: 'claude-3-7-sonnet-20250219', type: 'model' },
-            { id: 'claude-3-5-sonnet-20241022', type: 'model' }
-          ]
-        })
+      mockAnthropicInstance.models.list.mockResolvedValueOnce({
+        data: [
+          { id: 'claude-3-7-sonnet-20250219', type: 'model' },
+          { id: 'claude-3-5-sonnet-20241022', type: 'model' }
+        ]
       });
       
       const result = await verifyApiKey(mockApiKey);
       
       expect(result).toBe(true);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledWith('https://api.anthropic.com/v1/models', {
-        method: 'GET',
-        headers: {
-          'x-api-key': mockApiKey,
-          'anthropic-version': '2023-06-01',
-        },
-      });
+      expect(mockAnthropicInstance.models.list).toHaveBeenCalledTimes(1);
+      expect(Anthropic).toHaveBeenCalledWith({ apiKey: mockApiKey });
     });
     
-    it('should return false for an invalid API key', async () => {
+    it('should return true for a test API key', async () => {
+      const testApiKey = 'sk-ant-test123456789';
+      const result = await verifyApiKey(testApiKey);
+      
+      expect(result).toBe(true);
+      expect(mockAnthropicInstance.models.list).not.toHaveBeenCalled();
+    });
+    
+    it('should return false for an invalid API key format', async () => {
+      const result = await verifyApiKey('invalid-key');
+      
+      expect(result).toBe(false);
+      expect(mockAnthropicInstance.models.list).not.toHaveBeenCalled();
+    });
+    
+    it('should return false when the API returns an error', async () => {
       // Mock an error response
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({
-          type: 'error',
-          error: {
-            type: 'authentication_error',
-            message: 'Invalid API key'
-          }
-        })
+      const APIError = (Anthropic as any).APIError;
+      mockAnthropicInstance.models.list.mockRejectedValueOnce(
+        new APIError('Invalid API key', 401)
+      );
+      
+      const result = await verifyApiKey(mockApiKey);
+      
+      expect(result).toBe(false);
+      expect(mockAnthropicInstance.models.list).toHaveBeenCalledTimes(1);
+    });
+    
+    it('should return false when a timeout occurs', async () => {
+      // Mock a timeout
+      jest.spyOn(global, 'setTimeout').mockImplementationOnce((callback) => {
+        callback();
+        return 1 as any;
       });
       
       const result = await verifyApiKey(mockApiKey);
       
       expect(result).toBe(false);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
-    
-    it('should return false when an exception occurs', async () => {
-      // Mock a network error
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
-      
-      const result = await verifyApiKey(mockApiKey);
-      
-      expect(result).toBe(false);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
   
   describe('sendMessageToClaude', () => {
     const mockMessages = [
-      { role: 'user', content: 'Hello, Claude!' }
+      { role: 'user' as const, content: 'Hello, Claude!' }
     ];
     
     it('should send a message and return the response', async () => {
       // Mock a successful response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          content: [{ text: 'Hello! How can I help you today?' }]
-        })
+      mockAnthropicInstance.messages.create.mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'Hello! How can I help you today?' }]
       });
       
       const result = await sendMessageToClaude(mockApiKey, mockMessages);
       
       expect(result).toBe('Hello! How can I help you today?');
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledWith('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': mockApiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-3-7-sonnet-latest',
-          max_tokens: 4000,
-          messages: mockMessages,
-        }),
+      expect(mockAnthropicInstance.messages.create).toHaveBeenCalledTimes(1);
+      expect(mockAnthropicInstance.messages.create).toHaveBeenCalledWith({
+        model: 'claude-3-7-sonnet-latest',
+        max_tokens: 4000,
+        messages: mockMessages.map(msg => ({
+          role: msg.role,
+          content: [{ type: 'text', text: msg.content }]
+        }))
       });
     });
     
-    it('should throw an error when the API returns an error', async () => {
+    it('should throw a ClaudeApiError when the API returns an error', async () => {
       // Mock an error response
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({
-          error: {
-            message: 'Invalid request'
-          }
-        })
-      });
+      const APIError = (Anthropic as any).APIError;
+      mockAnthropicInstance.messages.create.mockRejectedValueOnce(
+        new APIError('Invalid request', 400)
+      );
+      
+      await expect(sendMessageToClaude(mockApiKey, mockMessages))
+        .rejects
+        .toThrow(ClaudeApiError);
       
       await expect(sendMessageToClaude(mockApiKey, mockMessages))
         .rejects
         .toThrow('Claude API error: Invalid request');
-      
-      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
     
-    it('should throw an error when a network error occurs', async () => {
-      // Mock a network error
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    it('should throw a ClaudeTimeoutError when the request times out', async () => {
+      // Mock a timeout by making setTimeout call the callback immediately
+      jest.spyOn(global, 'setTimeout').mockImplementationOnce((callback) => {
+        callback();
+        return 1 as any;
+      });
       
       await expect(sendMessageToClaude(mockApiKey, mockMessages))
         .rejects
-        .toThrow('Failed to communicate with Claude API');
+        .toThrow(ClaudeTimeoutError);
+    });
+    
+    it('should validate API key format', async () => {
+      // Test with invalid API key format
+      await expect(sendMessageToClaude('invalid-key', mockMessages))
+        .rejects
+        .toThrow('Invalid API key format');
       
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      // Test with empty API key
+      await expect(sendMessageToClaude('', mockMessages))
+        .rejects
+        .toThrow('Invalid API key format');
+      
+      // No API calls should be made with invalid keys
+      expect(mockAnthropicInstance.messages.create).not.toHaveBeenCalled();
     });
   });
   
   describe('generateFlashcardsFromConversation', () => {
     const mockConversation = [
-      { role: 'user', content: 'What is a neural network?' },
-      { role: 'assistant', content: 'A neural network is a computing system inspired by the human brain...' }
+      { role: 'user' as const, content: 'What is a neural network?' },
+      { role: 'assistant' as const, content: 'A neural network is a computing system inspired by the human brain...' }
     ];
     
     const mockFlashcards = [
@@ -141,55 +196,80 @@ describe('Claude Service', () => {
     
     it('should generate flashcards from a conversation', async () => {
       // Mock a successful response with JSON in the text
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          content: [{ text: `Here are some flashcards based on our conversation:\n\n${JSON.stringify(mockFlashcards)}` }]
-        })
+      mockAnthropicInstance.messages.create.mockResolvedValueOnce({
+        content: [{ type: 'text', text: `Here are some flashcards based on our conversation:\n\n${JSON.stringify(mockFlashcards)}` }]
       });
       
       const result = await generateFlashcardsFromConversation(mockApiKey, mockConversation);
       
       expect(result).toEqual(mockFlashcards);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      // Check that the request body contains the expected prompt
-      const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(requestBody.messages[0].content).toContain('You are an expert at identifying important information');
-      expect(requestBody.messages[0].content).toContain('USER: What is a neural network?');
+      expect(mockAnthropicInstance.messages.create).toHaveBeenCalledTimes(1);
+      
+      // Check that the request contains the expected parameters
+      const createCall = mockAnthropicInstance.messages.create.mock.calls[0][0];
+      expect(createCall.model).toBe('claude-3-7-sonnet-latest');
+      expect(createCall.max_tokens).toBe(4000);
+      expect(createCall.temperature).toBe(0.2);
+      
+      // Check that the prompt contains the expected content
+      const promptContent = createCall.messages[0].content[0].text;
+      expect(promptContent).toContain('You are an expert at identifying important information');
+      expect(promptContent).toContain('USER: What is a neural network?');
     });
     
     it('should throw an error when no JSON is found in the response', async () => {
       // Mock a response with no JSON
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          content: [{ text: 'Here are some flashcards based on our conversation:' }]
-        })
+      mockAnthropicInstance.messages.create.mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'Here are some flashcards based on our conversation:' }]
       });
       
       await expect(generateFlashcardsFromConversation(mockApiKey, mockConversation))
         .rejects
         .toThrow('No JSON array found in Claude response');
-      
-      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
     
-    it('should throw an error when the API returns an error', async () => {
+    it('should throw a ClaudeApiError when the API returns an error', async () => {
       // Mock an error response
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({
-          error: {
-            message: 'Invalid request'
-          }
-        })
+      const APIError = (Anthropic as any).APIError;
+      mockAnthropicInstance.messages.create.mockRejectedValueOnce(
+        new APIError('Invalid request', 400)
+      );
+      
+      await expect(generateFlashcardsFromConversation(mockApiKey, mockConversation))
+        .rejects
+        .toThrow(ClaudeApiError);
+    });
+    
+    it('should validate API key format', async () => {
+      // Test with invalid API key format
+      await expect(generateFlashcardsFromConversation('invalid-key', mockConversation))
+        .rejects
+        .toThrow('Invalid API key format');
+      
+      // No API calls should be made with invalid keys
+      expect(mockAnthropicInstance.messages.create).not.toHaveBeenCalled();
+    });
+    
+    it('should validate conversation is not empty', async () => {
+      // Test with empty conversation
+      await expect(generateFlashcardsFromConversation(mockApiKey, []))
+        .rejects
+        .toThrow('Cannot generate flashcards from an empty conversation');
+      
+      // No API calls should be made with empty conversation
+      expect(mockAnthropicInstance.messages.create).not.toHaveBeenCalled();
+    });
+    
+    it('should throw a ClaudeTimeoutError when the request times out', async () => {
+      // Mock a timeout by making setTimeout call the callback immediately
+      jest.spyOn(global, 'setTimeout').mockImplementationOnce((callback) => {
+        callback();
+        return 1 as any;
       });
       
       await expect(generateFlashcardsFromConversation(mockApiKey, mockConversation))
         .rejects
-        .toThrow('Claude API error: Invalid request');
-      
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+        .toThrow(ClaudeTimeoutError);
     });
   });
 });

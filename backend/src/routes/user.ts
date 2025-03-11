@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { HTTPException } from 'hono/http-exception';
 import { authMiddleware } from '../middleware/auth';
-import { encrypt, decrypt } from '../utils/encryption';
+import { encrypt } from '../utils/encryption';
 import { queryOne } from '../utils/db';
 import { verifyApiKey } from '../services/claude-service';
 import type { Env, ApiKeyRequest } from '../types';
@@ -39,7 +39,7 @@ router.post(
       const encryptedApiKey = await encrypt(api_key, c.env.ENCRYPTION_KEY);
       
       // Update the user's API key
-      await c.env.DB.prepare(
+      await (c.env!.DB as unknown as D1Database).prepare(
         'UPDATE users SET encrypted_api_key = ?, updated_at = ? WHERE id = ?'
       )
         .bind(encryptedApiKey, Math.floor(Date.now() / 1000), userId)
@@ -63,7 +63,7 @@ router.get('/apikey', async (c) => {
   try {
     // Check if the user has an API key
     const user = await queryOne<{ encrypted_api_key: string | null }>(
-      c.env.DB,
+      c.env!.DB as unknown as D1Database,
       'SELECT encrypted_api_key FROM users WHERE id = ?',
       [userId]
     );
@@ -89,7 +89,7 @@ router.get('/profile', async (c) => {
   try {
     // Get the user's profile
     const user = await queryOne<{ id: string; username: string }>(
-      c.env.DB,
+      c.env!.DB as unknown as D1Database,
       'SELECT id, username FROM users WHERE id = ?',
       [userId]
     );

@@ -116,6 +116,35 @@ This project consists of two main parts:
    npm run dev
    ```
 
+### Running Both Servers
+
+For convenience, you can use the provided script to start both the frontend and backend servers:
+
+```
+./start-dev-servers.sh
+```
+
+This will start the backend server on port 8787 and the frontend server on port 3000 (or 3001 if 3000 is already in use).
+
+## Debugging
+
+The application includes several diagnostic tools to help debug authentication and API key issues:
+
+1. **Authentication Flow Test**: A comprehensive test of the complete authentication flow.
+   - Access: http://localhost:3000/test-auth-flow.html
+
+2. **Test Login Page**: A simple interface to test login, registration, and API key storage.
+   - Access: http://localhost:3000/test-login.html
+
+3. **Claude API Key Test**: Tests the Claude API key verification functionality.
+   - Access: http://localhost:3000/test-claude-api-key.html
+
+For detailed information about debugging authentication and API key issues, see [DEBUGGING.md](DEBUGGING.md).
+
+### Development Mode API Keys
+
+In development mode, you can use test API keys that start with `sk-ant-test` (e.g., `sk-ant-test123456789`). These keys will be accepted without making an API call to Anthropic, allowing you to test the authentication flow without needing a real API key.
+
 ## Deployment
 
 ### Frontend Deployment
