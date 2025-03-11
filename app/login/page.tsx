@@ -21,9 +21,43 @@ export default function LoginPage() {
   const { login, register, isLoading } = useAuth()
   const { toast } = useToast()
 
+  // Client-side validation function
+  const validateForm = (isRegister = false): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    // Validate username
+    if (!username) {
+      newErrors.username = "Username is required";
+    } else if (username.length < 3) {
+      newErrors.username = "Username must be at least 3 characters";
+    } else if (username.length > 50) {
+      newErrors.username = "Username must be less than 50 characters";
+    }
+    
+    // Validate password
+    if (!password) {
+      newErrors.password = "Password is required";
+    } else if (password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters";
+    }
+    
+    // Validate confirm password (only for registration)
+    if (isRegister && password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords don't match";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrors({})
+    
+    // Validate form before submission
+    if (!validateForm()) {
+      return;
+    }
 
     try {
       await login({ username, password })
@@ -64,15 +98,10 @@ export default function LoginPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrors({})
-
-    if (password !== confirmPassword) {
-      setErrors({ confirmPassword: "Passwords don't match" });
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match",
-        variant: "destructive",
-      })
-      return
+    
+    // Validate form before submission
+    if (!validateForm(true)) {
+      return;
     }
 
     try {
@@ -145,7 +174,13 @@ export default function LoginPage() {
                       id="username"
                       type="text"
                       value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        // Clear error when user types
+                        if (errors.username) {
+                          setErrors({...errors, username: ""});
+                        }
+                      }}
                       required
                       className={`border-blue-200 focus:border-blue-500 ${errors.username || errors['0'] ? 'border-red-500' : ''}`}
                     />
@@ -161,7 +196,13 @@ export default function LoginPage() {
                       id="password"
                       type="password"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        // Clear error when user types
+                        if (errors.password) {
+                          setErrors({...errors, password: ""});
+                        }
+                      }}
                       required
                       className={`border-blue-200 focus:border-blue-500 ${errors.password || errors['1'] ? 'border-red-500' : ''}`}
                     />
@@ -187,7 +228,13 @@ export default function LoginPage() {
                       id="register-username"
                       type="text"
                       value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        // Clear error when user types
+                        if (errors.username) {
+                          setErrors({...errors, username: ""});
+                        }
+                      }}
                       required
                       className={`border-blue-200 focus:border-blue-500 ${errors.username || errors['0'] ? 'border-red-500' : ''}`}
                     />
@@ -203,7 +250,13 @@ export default function LoginPage() {
                       id="register-password"
                       type="password"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        // Clear error when user types
+                        if (errors.password) {
+                          setErrors({...errors, password: ""});
+                        }
+                      }}
                       required
                       className={`border-blue-200 focus:border-blue-500 ${errors.password || errors['1'] ? 'border-red-500' : ''}`}
                     />
@@ -219,7 +272,13 @@ export default function LoginPage() {
                       id="confirm-password"
                       type="password"
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        // Clear error when user types
+                        if (errors.confirmPassword) {
+                          setErrors({...errors, confirmPassword: ""});
+                        }
+                      }}
                       required
                       className={`border-blue-200 focus:border-blue-500 ${errors.confirmPassword ? 'border-red-500' : ''}`}
                     />
