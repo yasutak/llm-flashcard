@@ -1,0 +1,26 @@
+name = "llm-flashcard-backend"
+main = "src/index.ts"
+compatibility_date = "2023-12-01"
+
+# Bind the D1 database
+[[d1_databases]]
+binding = "DB"
+database_name = "llm_flashcard_db"
+database_id = "59d98564-9aeb-470c-ac05-0ac4dadfde4c"
+
+# Environment variables
+[vars]
+JWT_SECRET = "change-this-to-a-secure-secret-in-production"
+ENCRYPTION_KEY = "change-this-to-a-secure-key-in-production"
+
+# Development environment
+[env.development]
+vars = { JWT_SECRET = "dev-secret", ENCRYPTION_KEY = "dev-encryption-key" }
+
+# Production environment
+[env.production]
+vars = { JWT_SECRET = "placeholder-jwt-secret", ENCRYPTION_KEY = "placeholder-encryption-key" }
+
+# Triggers
+[triggers]
+crons = []

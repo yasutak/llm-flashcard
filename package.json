@@ -6,7 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "setup": "node setup.js",
+    "setup:backend": "node setup.js --backend-only",
+    "setup:frontend": "node setup.js --frontend-only"
   },
   "dependencies": {
     "@radix-ui/react-dropdown-menu": "^2.1.6",

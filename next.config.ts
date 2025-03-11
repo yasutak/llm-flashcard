@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3001/api/:path*', // Adjust this to your actual API server
+        destination: 'http://localhost:59119/api/:path*', // Cloudflare Workers local port
       },
     ];
   },
