@@ -32,7 +32,7 @@ export const ValidationRules = {
   }),
   
   minLength: (length: number, message = `Must be at least ${length} characters`): ValidationRule => ({
-    validate: (value) => !value || value.length >= length,
+    validate: (value) => value !== undefined && value !== null && value.length >= length,
     message
   }),
   

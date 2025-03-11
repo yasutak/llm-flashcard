@@ -61,12 +61,18 @@ export function FormField({
     }
   }
   
-  // Clear error when component unmounts
+  // Validate on mount and clear on unmount
   useEffect(() => {
+    // Validate on mount if there are rules
+    if (rules.length > 0 && value) {
+      validateField(formId, name, value, rules)
+    }
+    
+    // Clear on unmount
     return () => {
       clearErrors(formId, name)
     }
-  }, [formId, name, clearErrors])
+  }, [formId, name, rules, value, validateField, clearErrors])
   
   return (
     <div className="grid gap-2">
