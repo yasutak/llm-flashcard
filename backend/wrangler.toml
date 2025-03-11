@@ -5,8 +5,8 @@ compatibility_date = "2023-12-01"
 # Bind the D1 database
 [[d1_databases]]
 binding = "DB"
-database_name = "llm_flashcard_db"
-database_id = "59d98564-9aeb-470c-ac05-0ac4dadfde4c"
+database_name = "llm_flashcard"
+database_id = "7d827742-55dc-4c6a-a021-a322a687b332"
 
 # Environment variables
 [vars]

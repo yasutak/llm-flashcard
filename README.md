@@ -180,6 +180,62 @@ The backend can be deployed to Cloudflare Workers:
 - `JWT_SECRET`: Secret key for JWT token generation and verification
 - `ENCRYPTION_KEY`: Key for encrypting and decrypting API keys
 
+## Database Schema
+
+The LLM Flashcard application uses the following database schema:
+
+```mermaid
+erDiagram
+    USERS ||--o{ CHATS : creates
+    USERS ||--o{ DECKS : owns
+    CHATS ||--|| DECKS : "has one"
+    DECKS ||--o{ FLASHCARDS : contains
+    
+    USERS {
+        string id PK
+        string username
+        string password_hash
+        string encrypted_api_key
+        int created_at
+        int updated_at
+    }
+    
+    CHATS {
+        string id PK
+        string user_id FK
+        string title
+        int created_at
+        int updated_at
+    }
+    
+    MESSAGES {
+        string id PK
+        string chat_id FK
+        string role
+        string content
+        int created_at
+    }
+    
+    FLASHCARDS {
+        string id PK
+        string user_id FK
+        string deck_id FK
+        string question
+        string answer
+        int created_at
+        int updated_at
+    }
+    
+    DECKS {
+        string id PK
+        string user_id FK
+        string chat_id FK
+        string title
+        int created_at
+        int updated_at
+    }
+```
+
 ## License
 
 MIT

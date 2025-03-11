@@ -7,7 +7,9 @@ import { HTTPException } from 'hono/http-exception';
 import { errorHandler } from './middleware/error-handler';
 import authRoutes from './routes/auth';
 import chatRoutes from './routes/chats';
+import deckRoutes from './routes/decks';
 import flashcardRoutes from './routes/flashcards';
+import flashcardReviewRoutes from './routes/flashcard-reviews';
 import userRoutes from './routes/user';
 
 // Define environment bindings
@@ -46,7 +48,9 @@ app.use('*', errorHandler());
 // Routes
 app.route('/api/auth', authRoutes);
 app.route('/api/chats', chatRoutes);
+app.route('/api/decks', deckRoutes);
 app.route('/api/flashcards', flashcardRoutes);
+app.route('/api/flashcard-reviews', flashcardReviewRoutes);
 app.route('/api/user', userRoutes);
 
 // Health check
