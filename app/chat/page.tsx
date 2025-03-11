@@ -24,10 +24,17 @@ function FlashcardButton({ chatId, messageId }: { chatId?: string; messageId: st
   const { generateCardsFromMessage } = useFlashcards()
   const { toast } = useToast()
   
+  // Use useRef to track if the button is already clicked to prevent duplicate requests
+  const isProcessingRef = useRef(false)
+  
   const handleGenerateFlashcards = async () => {
-    if (!chatId) return
+    // If no chatId or already processing, don't do anything
+    if (!chatId || isProcessingRef.current || generating) return
     
+    // Set both state and ref to prevent duplicate clicks
     setGenerating(true)
+    isProcessingRef.current = true
+    
     try {
       await generateCardsFromMessage(chatId, messageId)
       toast({
@@ -50,6 +57,10 @@ function FlashcardButton({ chatId, messageId }: { chatId?: string; messageId: st
       })
     } finally {
       setGenerating(false)
+      // Reset the processing flag after a short delay to prevent rapid re-clicks
+      setTimeout(() => {
+        isProcessingRef.current = false
+      }, 1000)
     }
   }
   
@@ -151,8 +162,16 @@ export default function ChatPage() {
     }
   }
 
+  // Use useRef to track if the generate flashcards button is already clicked
+  const isGeneratingRef = useRef(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+
   const handleGenerateFlashcards = async () => {
-    if (!currentChat) return
+    if (!currentChat || isGeneratingRef.current || isGenerating) return
+
+    // Set both state and ref to prevent duplicate clicks
+    setIsGenerating(true)
+    isGeneratingRef.current = true
 
     try {
       await generateCardsFromChat(currentChat.id)
@@ -174,6 +193,12 @@ export default function ChatPage() {
         description: errorMessage,
         variant: "destructive",
       })
+    } finally {
+      setIsGenerating(false)
+      // Reset the processing flag after a short delay to prevent rapid re-clicks
+      setTimeout(() => {
+        isGeneratingRef.current = false
+      }, 1000)
     }
   }
 
@@ -334,8 +359,19 @@ export default function ChatPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem onClick={handleGenerateFlashcards}>
-                    Generate flashcards from this chat
+                  <DropdownMenuItem 
+                    onClick={handleGenerateFlashcards}
+                    disabled={isGenerating}
+                    className="flex items-center"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <div className="h-4 w-4 mr-2 border-2 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      "Generate flashcards from this chat"
+                    )}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

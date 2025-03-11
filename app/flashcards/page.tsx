@@ -27,9 +27,16 @@ export default function FlashcardsPage() {
   const [editMode, setEditMode] = useState(false)
   const [editedCard, setEditedCard] = useState<Flashcard | null>(null)
 
+  // Track if we've already fetched flashcards to prevent infinite loops
+  const [hasFetched, setHasFetched] = useState(false)
+
   useEffect(() => {
-    fetchFlashcards()
-  }, [fetchFlashcards])
+    // Only fetch if we haven't already fetched and we're not currently loading
+    if (!hasFetched && !isLoading) {
+      fetchFlashcards()
+      setHasFetched(true)
+    }
+  }, [fetchFlashcards, hasFetched, isLoading])
 
   const filteredCards = flashcards.filter(
     (card) =>

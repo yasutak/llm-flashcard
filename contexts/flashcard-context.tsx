@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
+import { createContext, useContext, useState, type ReactNode, useEffect, useRef } from "react"
 import type { Flashcard } from "@/types"
 import { useAuth } from "./auth-context"
 import { getFlashcards, getFlashcardsForChat, generateFlashcards, updateFlashcard, deleteFlashcard, generateFlashcardsFromMessage } from "@/services/flashcard-service"
@@ -78,9 +78,27 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
+  // Use a ref to track if a fetch is already in progress
+  const isFetchingRef = useRef(false)
+  // Use a ref to track the last fetch time to prevent rapid successive calls
+  const lastFetchTimeRef = useRef(0)
+  // Minimum time between fetches in milliseconds
+  const FETCH_COOLDOWN = 2000
+
   const fetchFlashcards = async () => {
     if (!user) return
 
+    // Check if we're already fetching or if we've fetched recently
+    const now = Date.now()
+    if (isFetchingRef.current || (now - lastFetchTimeRef.current < FETCH_COOLDOWN)) {
+      console.log("Fetch request debounced - already fetching or too soon since last fetch")
+      return
+    }
+
+    // Set the fetching flag and update last fetch time
+    isFetchingRef.current = true
+    lastFetchTimeRef.current = now
+    
     setIsLoading(true)
     try {
       // Get flashcards from the API
@@ -90,10 +108,30 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
       console.error("Error fetching flashcards:", error)
     } finally {
       setIsLoading(false)
+      // Reset the fetching flag after a short delay
+      setTimeout(() => {
+        isFetchingRef.current = false
+      }, 500)
     }
   }
 
+  // Use a ref to track if a fetch for chat is already in progress
+  const isFetchingChatRef = useRef(false)
+  // Use a ref to track the last fetch for chat time
+  const lastFetchChatTimeRef = useRef(0)
+
   const fetchFlashcardsForChat = async (chatId: string) => {
+    // Check if we're already fetching or if we've fetched recently
+    const now = Date.now()
+    if (isFetchingChatRef.current || (now - lastFetchChatTimeRef.current < FETCH_COOLDOWN)) {
+      console.log("Fetch chat request debounced - already fetching or too soon since last fetch")
+      return
+    }
+
+    // Set the fetching flag and update last fetch time
+    isFetchingChatRef.current = true
+    lastFetchChatTimeRef.current = now
+    
     setIsLoading(true)
     try {
       // Get flashcards for the chat from the API
@@ -103,6 +141,10 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
       console.error("Error fetching flashcards for chat:", error)
     } finally {
       setIsLoading(false)
+      // Reset the fetching flag after a short delay
+      setTimeout(() => {
+        isFetchingChatRef.current = false
+      }, 500)
     }
   }
 
