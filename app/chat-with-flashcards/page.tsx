@@ -5,14 +5,17 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { MainNav } from "@/components/main-nav"
 import { useChat } from "@/contexts/chat-context"
 import { useFlashcards } from "@/contexts/flashcard-context"
+import { ChatSidebar } from "@/components/chat-sidebar"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { ApiError } from "@/services/api"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { ChevronLeft, ChevronRight, BookOpen, RefreshCw, Send } from "lucide-react"
+import { BookOpen, RefreshCw, Send } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { MarkdownView } from "./markdown-view"
+import { FlashcardCard } from "@/components/flashcard-card"
+import { FlashcardNavigation } from "@/components/flashcard-navigation"
 
 export default function ChatWithFlashcardsPage() {
   const { hasApiKey } = useAuth()
@@ -54,7 +57,6 @@ export default function ChatWithFlashcardsPage() {
   useEffect(() => {
     if (!chatId || !hasApiKey || isLoadingDecksRef.current) return
     
-    // Only fetch decks once per chat
     if (loadedChatRef.current !== chatId) {
       isLoadingDecksRef.current = true
       loadedChatRef.current = chatId
@@ -80,10 +82,18 @@ export default function ChatWithFlashcardsPage() {
     }
   }, [chatId, decks, fetchFlashcardsForDeck])
   
-  // Scroll to bottom when messages change
+  // Scroll to bottom only when new messages are added
+  const prevMessagesLengthRef = useRef(0);
+  
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+    // Only scroll when messages are added, not on initial load
+    if (messages.length > prevMessagesLengthRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    
+    // Update the previous length reference
+    prevMessagesLengthRef.current = messages.length;
+  }, [messages]);
   
   // Handle sending a message
   const handleSendMessage = async () => {
@@ -192,177 +202,166 @@ export default function ChatWithFlashcardsPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <MainNav />
-      <div className="flex-1 p-4">
-        <div className="mb-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Chat with Flashcards</h1>
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => router.push(`/chat?chatId=${chatId}`)}
-            >
-              Chat View
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => router.push(`/flashcards?chatId=${chatId}`)}
-            >
-              Flashcards View
-            </Button>
-          </div>
-        </div>
+      <div className="flex flex-1 flex-col md:flex-row">
+        {/* Chat sidebar */}
+        <ChatSidebar currentChatId={chatId || undefined} />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Chat panel */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="p-4 bg-blue-50 border-b">
-              <h2 className="text-lg font-semibold">{currentChat.title}</h2>
-            </div>
-            <div className="flex flex-col h-[calc(100vh-16rem)]">
-              <ScrollArea className="flex-1">
-                <div className="p-4 space-y-4">
-                  {messages.map((message) => (
-                    <div 
-                      key={message.id} 
-                      className={`p-3 rounded-lg ${
-                        message.role === "user" 
-                          ? "bg-blue-100 ml-8" 
-                          : "bg-gray-100 mr-8"
-                      }`}
-                    >
-                      <div className="text-sm font-semibold mb-1">
-                        {message.role === "user" ? "You" : "Claude"}
-                      </div>
-                      <div className="whitespace-pre-wrap">{message.content}</div>
-                    </div>
-                  ))}
-                  {sendingMessage && (
-                    <div className="p-3 rounded-lg bg-gray-100 mr-8">
-                      <div className="text-sm font-semibold mb-1">Claude</div>
-                      <div className="flex space-x-2">
-                        <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse"></div>
-                        <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse delay-150"></div>
-                        <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse delay-300"></div>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-              </ScrollArea>
-              
-              {/* Chat input */}
-              <div className="p-4 border-t">
-                <div className="flex gap-2">
-                  <Textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Message Claude..."
-                    className="min-h-[50px] resize-none border-blue-200 focus:border-blue-500"
-                    rows={1}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!input.trim() || sendingMessage}
-                    className="flex-shrink-0 bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Send className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
+        {/* Main content area */}
+        <div className="flex-1 p-4">
+          <div className="mb-4 flex justify-between items-center">
+            <h1 className="text-2xl font-bold">Chat with Flashcards</h1>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => router.push(`/chat?chatId=${chatId}`)}
+              >
+                Chat View
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => router.push(`/flashcards?chatId=${chatId}`)}
+              >
+                Flashcards View
+              </Button>
             </div>
           </div>
           
-          {/* Flashcards panel */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="p-4 bg-blue-50 border-b">
-              <h2 className="text-lg font-semibold">Flashcards</h2>
-            </div>
-            <div className="p-4 flex flex-col items-center">
-              {!selectedDeckId ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-500">No deck selected for this chat.</p>
-                  <Button 
-                    className="mt-4"
-                    onClick={handleGenerateFlashcards}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <BookOpen className="h-4 w-4 mr-2" />
-                        Generate Flashcards
-                      </>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Chat panel */}
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-4 bg-blue-50 border-b">
+                <h2 className="text-lg font-semibold">{currentChat.title}</h2>
+              </div>
+              <div className="flex flex-col h-[calc(100vh-16rem)]">
+                <ScrollArea className="flex-1">
+                  <div className="p-4 space-y-4">
+                    {messages.map((message) => (
+                      <div 
+                        key={message.id} 
+                        className={`p-3 rounded-lg ${
+                          message.role === "user" 
+                            ? "bg-blue-100 ml-8" 
+                            : "bg-gray-100 mr-8"
+                        }`}
+                      >
+                        <div className="text-sm font-semibold mb-1">
+                          {message.role === "user" ? "You" : "Claude"}
+                        </div>
+                        <div className="whitespace-pre-wrap">
+                          {message.role === "assistant" ? (
+                            <MarkdownView content={message.content} />
+                          ) : (
+                            message.content
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {sendingMessage && (
+                      <div className="p-3 rounded-lg bg-gray-100 mr-8">
+                        <div className="text-sm font-semibold mb-1">Claude</div>
+                        <div className="flex space-x-2">
+                          <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse"></div>
+                          <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse delay-150"></div>
+                          <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse delay-300"></div>
+                        </div>
+                      </div>
                     )}
-                  </Button>
-                </div>
-              ) : flashcards.length > 0 ? (
-                <>
-                  <Card
-                    className="h-64 w-full max-w-md mb-4 cursor-pointer"
-                    onClick={handleFlip}
-                  >
-                    <CardContent className="p-6 h-full flex items-center justify-center relative">
-                      {/* Question side */}
-                      <div
-                        className={`w-full transition-all duration-500 ${
-                          flipped ? "opacity-0 absolute" : "opacity-100"
-                        }`}
-                      >
-                        <h3 className="text-xl font-semibold text-center mb-2">Question:</h3>
-                        <p className="text-center text-lg">{flashcards[currentIndex]?.question}</p>
-                        <p className="text-center text-xs text-gray-500 mt-4">(Click to reveal answer)</p>
-                      </div>
-                      
-                      {/* Answer side */}
-                      <div
-                        className={`w-full transition-all duration-500 ${
-                          flipped ? "opacity-100" : "opacity-0 absolute pointer-events-none"
-                        }`}
-                      >
-                        <h3 className="text-xl font-semibold text-center mb-2">Answer:</h3>
-                        <p className="text-center text-lg">{flashcards[currentIndex]?.answer}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="flex items-center gap-4">
-                    <Button variant="outline" size="icon" onClick={handlePrevious}>
-                      <ChevronLeft className="h-5 w-5" />
-                    </Button>
-                    <span className="text-sm text-gray-500">
-                      {currentIndex + 1} of {flashcards.length}
-                    </span>
-                    <Button variant="outline" size="icon" onClick={handleNext}>
-                      <ChevronRight className="h-5 w-5" />
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+                
+                {/* Chat input */}
+                <div className="p-4 border-t">
+                  <div className="flex gap-2">
+                    <Textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Message Claude..."
+                      className="min-h-[50px] resize-none border-blue-200 focus:border-blue-500"
+                      rows={1}
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={!input.trim() || sendingMessage}
+                      className="flex-shrink-0 bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Send className="h-5 w-5" />
                     </Button>
                   </div>
-                </>
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-gray-500">No flashcards found for this chat.</p>
-                  <Button 
-                    className="mt-4"
-                    onClick={handleGenerateFlashcards}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Generate Flashcards
-                      </>
-                    )}
-                  </Button>
                 </div>
-              )}
+              </div>
+            </div>
+            
+            {/* Flashcards panel */}
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-4 bg-blue-50 border-b">
+                <h2 className="text-lg font-semibold">Flashcards</h2>
+              </div>
+              <div className="p-4 flex flex-col items-center">
+                {!selectedDeckId ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">No deck selected for this chat.</p>
+                    <Button 
+                      className="mt-4"
+                      onClick={handleGenerateFlashcards}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <BookOpen className="h-4 w-4 mr-2" />
+                          Generate Flashcards
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ) : flashcards.length > 0 ? (
+                  <div className="flex flex-col items-center w-full">
+                    {/* Using our new FlashcardCard component */}
+                    {flashcards.length > 0 && currentIndex < flashcards.length && (
+                      <FlashcardCard
+                        flashcard={flashcards[currentIndex]}
+                        flipped={flipped}
+                        onFlip={handleFlip}
+                      />
+                    )}
+
+                    {/* Using our new FlashcardNavigation component */}
+                    <FlashcardNavigation
+                      currentIndex={currentIndex}
+                      totalCards={flashcards.length}
+                      onPrevious={handlePrevious}
+                      onNext={handleNext}
+                    />
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">No flashcards found for this chat.</p>
+                    <Button 
+                      className="mt-4"
+                      onClick={handleGenerateFlashcards}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Generate Flashcards
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

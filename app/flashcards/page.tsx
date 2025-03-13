@@ -4,18 +4,19 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { MainNav } from "@/components/main-nav"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { ChatSidebar } from "@/components/chat-sidebar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { ChevronLeft, ChevronRight, Edit, Trash2, Search, Calendar, Folder, MessageSquare } from "lucide-react"
+import { Search, MessageSquare } from "lucide-react"
 import { useFlashcards } from "@/contexts/flashcard-context"
 import { useToast } from "@/hooks/use-toast"
 import { useErrors } from "@/contexts/error-context"
-import type { Flashcard } from "@/types"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ApiError } from "@/services/api"
+import { FlashcardCard } from "@/components/flashcard-card"
+import { FlashcardNavigation } from "@/components/flashcard-navigation"
+import { FlashcardList } from "@/components/flashcard-list"
+import type { Flashcard } from "@/types"
 
 export default function FlashcardsPage() {
   const router = useRouter()
@@ -27,9 +28,7 @@ export default function FlashcardsPage() {
     fetchDecks,
     fetchFlashcardsForDeck,
     updateCard, 
-    deleteCard,
-    updateDeckTitle,
-    deleteDeck
+    deleteCard
   } = useFlashcards()
   const { toast } = useToast()
   const { setApiErrors } = useErrors()
@@ -37,10 +36,6 @@ export default function FlashcardsPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-  const [editMode, setEditMode] = useState(false)
-  const [editedCard, setEditedCard] = useState<Flashcard | null>(null)
-  const [editDeckMode, setEditDeckMode] = useState(false)
-  const [editedDeckTitle, setEditedDeckTitle] = useState("")
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null)
 
   // Track if we've already fetched data to prevent infinite loops
@@ -76,13 +71,8 @@ export default function FlashcardsPage() {
   useEffect(() => {
     if (selectedDeckId) {
       fetchFlashcardsForDeck(selectedDeckId)
-      // Find the deck in the decks array
-      const deck = decks.find(d => d.id === selectedDeckId)
-      if (deck) {
-        setEditedDeckTitle(deck.title)
-      }
     }
-  }, [selectedDeckId, fetchFlashcardsForDeck, decks])
+  }, [selectedDeckId, fetchFlashcardsForDeck])
 
   const filteredCards = flashcards.filter(
     (card) =>
@@ -102,58 +92,6 @@ export default function FlashcardsPage() {
 
   const handleFlip = () => {
     setFlipped((prev) => !prev)
-  }
-
-  const handleEdit = (card: Flashcard) => {
-    setEditMode(true)
-    setEditedCard({ ...card })
-  }
-
-  const handleSaveEdit = async () => {
-    if (!editedCard) return
-
-    try {
-      await updateCard(editedCard.id, {
-        question: editedCard.question,
-        answer: editedCard.answer,
-      })
-      setEditMode(false)
-      setEditedCard(null)
-      toast({
-        title: "Flashcard updated",
-        description: "Your changes have been saved",
-      })
-    } catch (error) {
-      let errorMessage = "Failed to update the flashcard. Please try again.";
-      let errorDetails = "";
-      
-      if (error instanceof ApiError) {
-        errorMessage = error.getDetailedMessage();
-        
-        // Check if this is a validation error
-        if (error.isValidationError()) {
-          const validationErrors = error.getValidationErrors();
-          if (validationErrors) {
-            // Format validation errors for display
-            errorDetails = validationErrors.map(err => `${err.field}: ${err.message}`).join('\n');
-            
-            // If we have validation errors, set them in the form
-            setApiErrors("editFlashcard", error);
-          }
-        }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      
-      toast({
-        title: "Error updating flashcard",
-        description: errorDetails || errorMessage,
-        variant: "destructive",
-      })
-      
-      // Log the full error for debugging
-      console.error("Flashcard update error:", error);
-    }
   }
 
   const handleDelete = async (id: string) => {
@@ -196,328 +134,119 @@ export default function FlashcardsPage() {
     }
   }
 
+  // Get the current chat ID if available from URL
+  const getChatIdFromDeck = () => {
+    if (selectedDeckId) {
+      const deck = decks.find(d => d.id === selectedDeckId);
+      return deck?.chat_id || undefined;
+    }
+    return undefined;
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
       <MainNav />
-      <div className="flex-1 bg-gradient-to-b from-blue-50 to-white p-4">
-        <div className="mx-auto max-w-4xl">
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <h1 className="text-2xl font-bold text-gray-900">Your Flashcards</h1>
-              
-              {/* Side-by-side view button */}
-              {selectedDeckId && (
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    // Find the chat ID for this deck
-                    const deck = decks.find(d => d.id === selectedDeckId);
-                    if (deck && deck.chat_id) {
-                      router.push(`/chat-with-flashcards?chatId=${deck.chat_id}`);
-                    }
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Side-by-side View
-                </Button>
-              )}
-            </div>
-            
-            {/* Deck selector */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-700">Decks</h2>
-                {editDeckMode && selectedDeckId ? (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={editedDeckTitle}
-                      onChange={(e) => setEditedDeckTitle(e.target.value)}
-                      className="border-blue-200 focus:border-blue-500"
-                    />
-                    <Button 
-                      onClick={async () => {
-                        try {
-                          await updateDeckTitle(selectedDeckId, editedDeckTitle);
-                          setEditDeckMode(false);
-                          toast({
-                            title: "Deck updated",
-                            description: "Deck title has been updated",
-                          });
-                        } catch (error) {
-                          console.error("Error updating deck:", error);
-                          toast({
-                            title: "Error updating deck",
-                            description: "Failed to update deck title",
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      Save
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setEditDeckMode(false)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                ) : (
+      <div className="flex flex-1 flex-col md:flex-row">
+        {/* Chat sidebar */}
+        <ChatSidebar currentChatId={getChatIdFromDeck()} />
+
+        {/* Main content area */}
+        <div className="flex-1 bg-gradient-to-b from-blue-50 to-white p-4">
+          <div className="mx-auto max-w-4xl">
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h1 className="text-2xl font-bold text-gray-900">Your Flashcards</h1>
+                
+                {/* Side-by-side view button */}
+                {selectedDeckId && (
                   <Button 
-                    variant="outline" 
-                    size="sm"
+                    variant="outline"
                     onClick={() => {
-                      setSelectedDeckId(null);
-                      fetchFlashcards();
+                      // Find the chat ID for this deck
+                      const deck = decks.find(d => d.id === selectedDeckId);
+                      if (deck && deck.chat_id) {
+                        router.push(`/chat-with-flashcards?chatId=${deck.chat_id}`);
+                      }
                     }}
-                    className={!selectedDeckId ? "bg-blue-100" : ""}
+                    className="flex items-center gap-2"
                   >
-                    All Flashcards
+                    <MessageSquare className="h-4 w-4" />
+                    Side-by-side View
                   </Button>
                 )}
               </div>
               
-              <ScrollArea className="h-24 mt-2 border rounded-md p-2">
-                <div className="space-y-1">
-                  {decks.map((deck) => (
-                    <div 
-                      key={deck.id} 
-                      className={`flex items-center justify-between p-2 rounded-md cursor-pointer ${
-                        selectedDeckId === deck.id ? "bg-blue-100" : "hover:bg-gray-100"
-                      }`}
-                    >
-                      <div 
-                        className="flex items-center gap-2 flex-1"
-                        onClick={() => setSelectedDeckId(deck.id)}
-                      >
-                        <Folder className="h-4 w-4 text-blue-500" />
-                        <span>{deck.title}</span>
-                      </div>
-                      {selectedDeckId === deck.id && !editDeckMode && (
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditDeckMode(true);
-                              setEditedDeckTitle(deck.title);
-                            }}
-                            className="h-7 w-7 text-gray-500 hover:text-blue-600"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={async () => {
-                              if (confirm("Are you sure you want to delete this deck and all its flashcards?")) {
-                                try {
-                                  await deleteDeck(deck.id);
-                                  setSelectedDeckId(null);
-                                  fetchDecks();
-                                  fetchFlashcards();
-                                  toast({
-                                    title: "Deck deleted",
-                                    description: "The deck and its flashcards have been removed",
-                                  });
-                                } catch (error) {
-                                  console.error("Error deleting deck:", error);
-                                  toast({
-                                    title: "Error deleting deck",
-                                    description: "Failed to delete the deck",
-                                    variant: "destructive",
-                                  });
-                                }
-                              }
-                            }}
-                            className="h-7 w-7 text-gray-500 hover:text-red-600"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-            
-            {/* Search bar */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="Search flashcards..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 border-blue-200 focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-64 w-full" />
-              <div className="flex justify-center gap-4">
-                <Skeleton className="h-10 w-10" />
-                <Skeleton className="h-10 w-20" />
-                <Skeleton className="h-10 w-10" />
+              {/* Search bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="Search flashcards..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 border-blue-200 focus:border-blue-500"
+                />
               </div>
             </div>
-          ) : (
-            <Tabs defaultValue="review" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="review" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                  Review Cards
-                </TabsTrigger>
-                <TabsTrigger value="manage" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                  Manage Cards
-                </TabsTrigger>
-              </TabsList>
 
-              <TabsContent value="review" className="mt-0">
-                {filteredCards.length > 0 ? (
-                  <div className="flex flex-col items-center">
-                    <div className="w-full max-w-xl mb-4">
-                      <Card
-                        className="h-64 cursor-pointer"
-                        onClick={handleFlip}
-                      >
-                        <CardContent className="p-6 h-full flex items-center justify-center relative">
-                          {/* Question side */}
-                          <div
-                            className={`w-full transition-all duration-500 ${
-                              flipped ? "opacity-0 absolute" : "opacity-100"
-                            }`}
-                          >
-                            <h3 className="text-xl font-semibold text-center mb-2">Question:</h3>
-                            <p className="text-center text-lg">{filteredCards[currentIndex]?.question}</p>
-                            <p className="text-center text-xs text-gray-500 mt-4">(Click to reveal answer)</p>
-                          </div>
-                          
-                          {/* Answer side */}
-                          <div
-                            className={`w-full transition-all duration-500 ${
-                              flipped ? "opacity-100" : "opacity-0 absolute pointer-events-none"
-                            }`}
-                          >
-                            <h3 className="text-xl font-semibold text-center mb-2">Answer:</h3>
-                            <p className="text-center text-lg">{filteredCards[currentIndex]?.answer}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
+            {isLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-64 w-full" />
+                <div className="flex justify-center gap-4">
+                  <Skeleton className="h-10 w-10" />
+                  <Skeleton className="h-10 w-20" />
+                  <Skeleton className="h-10 w-10" />
+                </div>
+              </div>
+            ) : (
+              <Tabs defaultValue="review" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="review" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                    Review Cards
+                  </TabsTrigger>
+                  <TabsTrigger value="manage" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                    Manage Cards
+                  </TabsTrigger>
+                </TabsList>
 
-                    <div className="flex items-center gap-4">
-                      <Button variant="outline" size="icon" onClick={handlePrevious} className="border-blue-200">
-                        <ChevronLeft className="h-5 w-5" />
-                      </Button>
-                      <span className="text-sm text-gray-500">
-                        {currentIndex + 1} of {filteredCards.length}
-                      </span>
-                      <Button variant="outline" size="icon" onClick={handleNext} className="border-blue-200">
-                        <ChevronRight className="h-5 w-5" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500">No flashcards found. Start chatting to generate some!</p>
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="manage" className="mt-0">
-                {editMode && editedCard ? (
-                  <Card className="mb-6 p-4">
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium">Question:</label>
-                        <Textarea
-                          value={editedCard.question}
-                          onChange={(e) => setEditedCard({ ...editedCard, question: e.target.value })}
-                          className="mt-1 border-blue-200"
+                <TabsContent value="review" className="mt-0">
+                  {filteredCards.length > 0 ? (
+                    <div className="flex flex-col items-center">
+                      {/* Using our new FlashcardCard component */}
+                      {filteredCards.length > 0 && currentIndex < filteredCards.length && (
+                        <FlashcardCard
+                          flashcard={filteredCards[currentIndex]}
+                          flipped={flipped}
+                          onFlip={handleFlip}
                         />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Answer:</label>
-                        <Textarea
-                          value={editedCard.answer}
-                          onChange={(e) => setEditedCard({ ...editedCard, answer: e.target.value })}
-                          className="mt-1 border-blue-200"
-                        />
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setEditMode(false)}>
-                          Cancel
-                        </Button>
-                        <Button onClick={handleSaveEdit} className="bg-blue-600 hover:bg-blue-700">
-                          Save Changes
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ) : (
-                  <ScrollArea className="h-[calc(100vh-16rem)]">
-                    <div className="space-y-4">
-                      {filteredCards.length > 0 ? (
-                        filteredCards.map((card) => (
-                          <Card key={card.id} className="p-4">
-                            <div className="flex justify-between items-start gap-4">
-                              <div className="flex-1">
-                                <div className="mb-2">
-                                  <h3 className="font-medium">Question:</h3>
-                                  <p>{card.question}</p>
-                                </div>
-                                <div>
-                                  <h3 className="font-medium">Answer:</h3>
-                                  <p>{card.answer}</p>
-                                </div>
-                                <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {new Date(card.created_at).toLocaleDateString()}
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Folder className="h-3 w-3" />
-                                    {decks.find(d => d.id === card.deck_id)?.title || "Unknown deck"}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEdit(card)}
-                                  className="h-8 w-8 text-gray-500 hover:text-blue-600"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDelete(card.id)}
-                                  className="h-8 w-8 text-gray-500 hover:text-red-600"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </Card>
-                        ))
-                      ) : (
-                        <div className="text-center py-12">
-                          <p className="text-gray-500">No flashcards found. Start chatting to generate some!</p>
-                        </div>
                       )}
+
+                      {/* Using our new FlashcardNavigation component */}
+                      <FlashcardNavigation
+                        currentIndex={currentIndex}
+                        totalCards={filteredCards.length}
+                        onPrevious={handlePrevious}
+                        onNext={handleNext}
+                      />
                     </div>
-                  </ScrollArea>
-                )}
-              </TabsContent>
-            </Tabs>
-          )}
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500">No flashcards found. Start chatting to generate some!</p>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="manage" className="mt-0">
+                  {/* Using our new FlashcardList component */}
+                  <FlashcardList
+                    flashcards={filteredCards}
+                    decks={decks}
+                    onEditCard={(id, data) => updateCard(id, data)}
+                    onDeleteCard={handleDelete}
+                  />
+                </TabsContent>
+              </Tabs>
+            )}
+          </div>
         </div>
       </div>
     </div>
