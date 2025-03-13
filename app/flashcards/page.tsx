@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ChatSidebar } from "@/components/chat-sidebar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { Search, MessageSquare } from "lucide-react"
+import { Search, MessageSquare, BookOpen } from "lucide-react"
 import { useFlashcards } from "@/contexts/flashcard-context"
 import { useToast } from "@/hooks/use-toast"
 import { useErrors } from "@/contexts/error-context"
@@ -153,8 +153,8 @@ export default function FlashcardsPage() {
         {/* Main content area */}
         <div className="flex-1 bg-gradient-to-b from-blue-50 to-white p-4">
           <div className="mx-auto max-w-4xl">
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-4">
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Your Flashcards</h1>
                 
                 {/* Side-by-side view button */}
@@ -168,9 +168,9 @@ export default function FlashcardsPage() {
                         router.push(`/chat-with-flashcards?chatId=${deck.chat_id}`);
                       }
                     }}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 bg-white shadow-sm hover-lift"
                   >
-                    <MessageSquare className="h-4 w-4" />
+                    <MessageSquare className="h-4 w-4 text-[hsl(var(--primary))]" />
                     Side-by-side View
                   </Button>
                 )}
@@ -178,12 +178,12 @@ export default function FlashcardsPage() {
               
               {/* Search bar */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Search flashcards..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-blue-200 focus:border-blue-500"
+                  className="pl-11 border-[hsl(var(--border))] focus:border-[hsl(var(--primary))] focus:ring-[hsl(var(--primary))] py-6 rounded-xl shadow-sm"
                 />
               </div>
             </div>
@@ -199,11 +199,17 @@ export default function FlashcardsPage() {
               </div>
             ) : (
               <Tabs defaultValue="review" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="review" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                <TabsList className="grid w-full grid-cols-2 mb-8 rounded-xl overflow-hidden shadow-sm p-1 bg-white">
+                  <TabsTrigger 
+                    value="review" 
+                    className="data-[state=active]:bg-[hsl(var(--primary))] data-[state=active]:text-white rounded-lg py-3"
+                  >
                     Review Cards
                   </TabsTrigger>
-                  <TabsTrigger value="manage" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                  <TabsTrigger 
+                    value="manage" 
+                    className="data-[state=active]:bg-[hsl(var(--primary))] data-[state=active]:text-white rounded-lg py-3"
+                  >
                     Manage Cards
                   </TabsTrigger>
                 </TabsList>
@@ -229,8 +235,21 @@ export default function FlashcardsPage() {
                       />
                     </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <p className="text-gray-500">No flashcards found. Start chatting to generate some!</p>
+                    <div className="text-center py-16 max-w-md mx-auto">
+                      <div className="inline-flex p-4 rounded-full bg-[hsl(var(--primary-light))] mb-6">
+                        <BookOpen className="h-8 w-8 text-[hsl(var(--primary))]" />
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-800 mb-3">No flashcards yet</h2>
+                      <p className="text-gray-500 mb-6 text-lg">
+                        Start chatting with Claude to generate some flashcards
+                      </p>
+                      <Button
+                        className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary-hover))] shadow-sm hover-lift"
+                        onClick={() => router.push('/chat')}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Start Chatting
+                      </Button>
                     </div>
                   )}
                 </TabsContent>

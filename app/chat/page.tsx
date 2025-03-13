@@ -9,16 +9,14 @@ import { MainNav } from "@/components/main-nav"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { Send, Bot, UserIcon, Lightbulb, Plus, MessageSquare, Copy, Check, BookOpen, Edit, Save } from "lucide-react"
+import { Send, Bot, UserIcon, Copy, Check, BookOpen, Edit, Save } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useChat } from "@/contexts/chat-context"
 import { useFlashcards } from "@/contexts/flashcard-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
-import { Switch } from "@/components/ui/switch"
 import { ApiError } from "@/services/api"
+import { ChatSidebar } from "@/components/chat-sidebar"
 
 // Flashcard button component
 function FlashcardButton({ chatId, messageId }: { chatId?: string; messageId: string }) {
@@ -88,7 +86,7 @@ function FlashcardButton({ chatId, messageId }: { chatId?: string; messageId: st
       title="Generate flashcards from this message"
     >
       {generating ? (
-        <div className="h-4 w-4 border-2 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin" />
+        <div className="h-4 w-4 border-2 border-t-gray-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin" />
       ) : (
         <BookOpen className="h-4 w-4" />
       )}
@@ -142,15 +140,12 @@ export default function ChatPage() {
     startNewChat, 
     chats, 
     selectChat,
-    autoGenerateFlashcards,
-    setAutoGenerateFlashcards,
     updateChatTitle
   } = useChat()
   
   // State for chat title editing
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [editedTitle, setEditedTitle] = useState("")
-  const { generateCardsFromChat } = useFlashcards()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -205,59 +200,6 @@ export default function ChatPage() {
     }
   }
 
-  // Use useRef to track if the generate flashcards button is already clicked
-  const isGeneratingRef = useRef(false)
-  const [isGenerating, setIsGenerating] = useState(false)
-
-  const handleGenerateFlashcards = async () => {
-    if (!currentChat || isGeneratingRef.current || isGenerating) return
-
-    // Set both state and ref to prevent duplicate clicks
-    setIsGenerating(true)
-    isGeneratingRef.current = true
-
-    try {
-      const result = await generateCardsFromChat(currentChat.id)
-      toast({
-        title: "Flashcards generated",
-        description: `Flashcards have been created from this conversation (Deck ID: ${result.deck_id})`,
-      })
-    } catch (error) {
-      let errorMessage = "Failed to generate flashcards. Please try again.";
-      let errorDetails = "";
-      
-      if (error instanceof ApiError) {
-        errorMessage = error.getDetailedMessage();
-        
-        // Check if this is a validation error
-        if (error.isValidationError()) {
-          const validationErrors = error.getValidationErrors();
-          if (validationErrors) {
-            // Format validation errors for display
-            errorDetails = validationErrors.map(err => `${err.field}: ${err.message}`).join('\n');
-          }
-        }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      
-      toast({
-        title: "Error generating flashcards",
-        description: errorDetails || errorMessage,
-        variant: "destructive",
-      })
-      
-      // Log the full error for debugging
-      console.error("Chat flashcard generation error:", error);
-    } finally {
-      setIsGenerating(false)
-      // Reset the processing flag after a short delay to prevent rapid re-clicks
-      setTimeout(() => {
-        isGeneratingRef.current = false
-      }, 1000)
-    }
-  }
-
   useEffect(() => {
     if (!hasApiKey) {
       router.push("/api-key")
@@ -273,44 +215,19 @@ export default function ChatPage() {
       <MainNav />
       <div className="flex flex-1 flex-col md:flex-row">
         {/* Chat sidebar */}
-        <div className="w-full md:w-64 bg-gray-50 border-r border-gray-200 dark:bg-gray-900 dark:border-gray-800">
-          <div className="p-4">
-            <Button className="w-full bg-blue-600 hover:bg-blue-700 mb-4" onClick={startNewChat}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Chat
-            </Button>
-
-            <ScrollArea className="h-[calc(100vh-8rem)]">
-              <div className="space-y-2">
-                {chats.map((chat) => (
-                  <Button
-                    key={chat.id}
-                    variant="ghost"
-                    className={`w-full justify-start text-left truncate ${
-                      currentChat?.id === chat.id ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" : ""
-                    }`}
-                    onClick={() => selectChat(chat.id)}
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span className="truncate">{chat.title}</span>
-                  </Button>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        </div>
+        <ChatSidebar currentChatId={currentChat?.id} />
 
         {/* Main chat area */}
         <div className="flex-1 flex flex-col bg-gradient-to-b from-blue-50 to-white">
           {/* Chat header with title */}
           {currentChat && (
-            <div className="bg-white border-b p-4 flex items-center justify-between">
+            <div className="bg-white border-b border-[hsl(var(--border))] p-4 flex items-center justify-between shadow-sm">
               {isEditingTitle ? (
                 <div className="flex items-center gap-2 flex-1">
                   <Input
                     value={editedTitle}
                     onChange={(e) => setEditedTitle(e.target.value)}
-                    className="border-blue-200 focus:border-blue-500"
+                    className="border-[hsl(var(--border))] focus:border-[hsl(var(--primary))] focus:ring-[hsl(var(--primary))]"
                     placeholder="Enter chat title"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -361,7 +278,7 @@ export default function ChatPage() {
                           });
                       }
                     }}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary-hover))]"
                   >
                     <Save className="h-4 w-4" />
                   </Button>
@@ -371,6 +288,7 @@ export default function ChatPage() {
                       setIsEditingTitle(false);
                       setEditedTitle(currentChat.title);
                     }}
+                    className="border-[hsl(var(--border))]"
                   >
                     Cancel
                   </Button>
@@ -385,9 +303,9 @@ export default function ChatPage() {
                       setIsEditingTitle(true);
                       setEditedTitle(currentChat.title);
                     }}
-                    className="text-gray-500 hover:text-blue-600"
+                    className="text-gray-500 hover:text-[hsl(var(--primary))]"
                   >
-                    <Edit className="h-4 w-4 mr-1" />
+                    <Edit className="h-4 w-4 mr-1.5" />
                     Rename
                   </Button>
                 </div>
@@ -395,36 +313,54 @@ export default function ChatPage() {
             </div>
           )}
           
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="mx-auto max-w-3xl space-y-4 pb-20">
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="container-max space-y-6 pb-20">
               {messages.length === 0 ? (
-                <div className="text-center py-12">
-                  <h2 className="text-2xl font-bold text-gray-700 mb-2">Welcome to LLM Flashcard Chat</h2>
-                  <p className="text-gray-500 mb-6">
+                <div className="text-center py-16 max-w-md mx-auto">
+                  <div className="inline-flex p-4 rounded-full bg-[hsl(var(--primary-light))] mb-6">
+                    <Bot className="h-8 w-8 text-[hsl(var(--primary))]" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-3">Welcome to LLM Flashcard Chat</h2>
+                  <p className="text-gray-500 mb-8 text-lg">
                     Start a conversation with Claude to generate flashcards automatically
                   </p>
+                  <div className="flex flex-col gap-3 text-left bg-white p-4 rounded-xl border border-[hsl(var(--border))] shadow-sm">
+                    <h3 className="font-medium text-gray-700">Try asking about:</h3>
+                    <div className="space-y-2 text-gray-600">
+                      <p>• "Explain the basics of quantum computing"</p>
+                      <p>• "Teach me about Japanese grammar"</p>
+                      <p>• "Summarize the key points of machine learning"</p>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex items-start gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                    className={`flex items-start gap-4 ${message.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     {message.role === "assistant" && (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-white shadow-sm">
                         <Bot className="h-5 w-5" />
                       </div>
                     )}
                     <div
-                      className={`rounded-lg px-4 py-2 max-w-[80%] ${
-                        message.role === "user" ? "bg-blue-600 text-white" : "bg-white border border-blue-200"
+                      className={`rounded-2xl px-5 py-3 shadow-sm max-w-[85%] ${
+                        message.role === "user" 
+                          ? "bg-[hsl(var(--primary))] text-white" 
+                          : "bg-white border border-[hsl(var(--border))]"
                       }`}
                     >
                       {message.role === "user" ? (
-                        <p className="whitespace-pre-wrap">{message.content}</p>
+                        <div>
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+                          <div className="text-xs mt-2 opacity-80">
+                            {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        </div>
                       ) : (
-                        <div className="markdown-content relative pt-8">
-                          <div className="absolute top-0 right-0 flex space-x-1">
+                        <div className="markdown-content relative pt-10">
+                          <div className="absolute top-1 right-1 flex space-x-1 p-1 rounded-lg bg-gray-50">
                             {/* Generate flashcards button for assistant messages */}
                             <FlashcardButton chatId={currentChat?.id} messageId={message.id} />
                             
@@ -436,40 +372,41 @@ export default function ChatPage() {
                             remarkPlugins={[remarkGfm]}
                             components={{
                               // Override default styling for markdown elements
-                              p: (props) => <p className="mb-4 last:mb-0" {...props} />,
-                              h1: (props) => <h1 className="text-xl font-bold my-4" {...props} />,
-                              h2: (props) => <h2 className="text-lg font-bold my-3" {...props} />,
-                              h3: (props) => <h3 className="text-md font-bold my-2" {...props} />,
-                              ul: (props) => <ul className="list-disc ml-6 mb-4" {...props} />,
-                              ol: (props) => <ol className="list-decimal ml-6 mb-4" {...props} />,
+                              p: (props) => <p className="mb-4 last:mb-0 leading-relaxed" {...props} />,
+                              h1: (props) => <h1 className="text-xl font-bold my-4 text-gray-800" {...props} />,
+                              h2: (props) => <h2 className="text-lg font-bold my-3 text-gray-800" {...props} />,
+                              h3: (props) => <h3 className="text-md font-bold my-2 text-gray-800" {...props} />,
+                              ul: (props) => <ul className="list-disc ml-6 mb-4 space-y-1" {...props} />,
+                              ol: (props) => <ol className="list-decimal ml-6 mb-4 space-y-1" {...props} />,
                               li: (props) => <li className="mb-1" {...props} />,
-                              a: (props) => <a className="text-blue-600 hover:underline" {...props} />,
+                              a: (props) => <a className="text-[hsl(var(--primary))] hover:underline" {...props} />,
                               code: ({className, children, ...props}) => {
                                 const match = /language-(\w+)/.exec(className || '');
                                 // Using type assertion with a more specific type
                                 const codeProps = props as { inline?: boolean };
                                 const isInline = !match && codeProps.inline;
                                 return isInline ? 
-                                  <code className="bg-gray-100 px-1 py-0.5 rounded text-sm" {...props}>{children}</code> : 
-                                  <code className="block bg-gray-100 p-2 rounded text-sm overflow-x-auto my-2" {...props}>{children}</code>;
+                                  <code className="bg-[hsl(var(--gray-100))] px-1.5 py-0.5 rounded text-sm font-mono" {...props}>{children}</code> : 
+                                  <code className="block bg-[hsl(var(--gray-100))] p-3 rounded-md text-sm font-mono overflow-x-auto my-3" {...props}>{children}</code>;
                               },
-                              pre: (props) => <pre className="bg-gray-100 p-2 rounded overflow-x-auto my-2" {...props} />,
-                              blockquote: (props) => <blockquote className="border-l-4 border-gray-200 pl-4 italic my-4" {...props} />,
-                              table: (props) => <table className="border-collapse border border-gray-300 my-4" {...props} />,
-                              th: (props) => <th className="border border-gray-300 px-4 py-2 bg-gray-100" {...props} />,
-                              td: (props) => <td className="border border-gray-300 px-4 py-2" {...props} />,
+                              pre: (props) => <pre className="bg-[hsl(var(--gray-100))] p-3 rounded-md overflow-x-auto my-3 text-sm" {...props} />,
+                              blockquote: (props) => <blockquote className="border-l-4 border-[hsl(var(--primary-light))] bg-[hsl(var(--gray-50))] pl-4 py-1 italic my-4 text-gray-700" {...props} />,
+                              table: (props) => <table className="border-collapse border border-[hsl(var(--border))] my-4 w-full" {...props} />,
+                              th: (props) => <th className="border border-[hsl(var(--border))] px-4 py-2 bg-[hsl(var(--gray-100))]" {...props} />,
+                              td: (props) => <td className="border border-[hsl(var(--border))] px-4 py-2" {...props} />,
                             }}
                           >
                             {message.content}
                           </ReactMarkdown>
+                          
+                          <div className="text-xs text-gray-400 mt-2">
+                            {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </div>
                         </div>
                       )}
-                      <div className={`text-xs mt-1 ${message.role === "user" ? "text-blue-100" : "text-gray-400"}`}>
-                        {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </div>
                     </div>
                     {message.role === "user" && (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--gray-200))] shadow-sm">
                         <UserIcon className="h-5 w-5 text-gray-600" />
                       </div>
                     )}
@@ -477,15 +414,15 @@ export default function ChatPage() {
                 ))
               )}
               {sendingMessage && (
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--primary))] text-white shadow-sm">
                     <Bot className="h-5 w-5" />
                   </div>
-                  <div className="rounded-lg bg-white border border-blue-200 px-4 py-2">
-                    <div className="flex space-x-2">
-                      <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse"></div>
-                      <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse delay-150"></div>
-                      <div className="h-2 w-2 rounded-full bg-blue-400 animate-pulse delay-300"></div>
+                  <div className="rounded-2xl bg-white border border-[hsl(var(--border))] px-5 py-4 shadow-sm">
+                    <div className="flex space-x-3">
+                      <div className="h-2.5 w-2.5 rounded-full bg-[hsl(var(--primary))] animate-pulse"></div>
+                      <div className="h-2.5 w-2.5 rounded-full bg-[hsl(var(--primary))] animate-pulse delay-150"></div>
+                      <div className="h-2.5 w-2.5 rounded-full bg-[hsl(var(--primary))] animate-pulse delay-300"></div>
                     </div>
                   </div>
                 </div>
@@ -494,87 +431,20 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className="sticky bottom-0 bg-white border-t p-4">
-            <div className="mx-auto max-w-3xl flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="flex-shrink-0 border-blue-200 text-blue-600"
-                    disabled={!currentChat || messages.length === 0}
-                  >
-                    <Lightbulb className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem 
-                    onClick={handleGenerateFlashcards}
-                    disabled={isGenerating}
-                    className="flex items-center"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <div className="h-4 w-4 mr-2 border-2 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      "Generate flashcards from this chat"
-                    )}
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (currentChat) {
-                        // Navigate to flashcards page with this chat's deck selected
-                        router.push(`/flashcards?chatId=${currentChat.id}`);
-                      }
-                    }}
-                    disabled={!currentChat}
-                    className="flex items-center"
-                  >
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    View flashcards for this chat
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (currentChat) {
-                        // Navigate to side-by-side view
-                        router.push(`/chat-with-flashcards?chatId=${currentChat.id}`);
-                      }
-                    }}
-                    disabled={!currentChat}
-                    className="flex items-center"
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Side-by-side view
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuSeparator />
-                  
-                  <div className="px-2 py-1.5 text-sm flex items-center justify-between">
-                    <span>Auto-generate flashcards</span>
-                    <Switch
-                      checked={autoGenerateFlashcards}
-                      onCheckedChange={setAutoGenerateFlashcards}
-                      aria-label="Toggle auto-generate flashcards"
-                    />
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          <div className="sticky bottom-0 bg-white border-t border-[hsl(var(--border))] py-4 px-6 shadow-md">
+            <div className="container-max flex gap-3">
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Message Claude..."
-                className="min-h-[50px] resize-none border-blue-200 focus:border-blue-500"
+                className="min-h-[56px] resize-none border-[hsl(var(--border))] focus:border-[hsl(var(--primary))] focus:ring-[hsl(var(--primary))] rounded-xl py-3 px-4 shadow-sm"
                 rows={1}
               />
               <Button
                 onClick={handleSendMessage}
                 disabled={!input.trim() || sendingMessage}
-                className="flex-shrink-0 bg-blue-600 hover:bg-blue-700"
+                className="flex-shrink-0 bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary-hover))] rounded-xl shadow-sm hover-lift"
               >
                 <Send className="h-5 w-5" />
               </Button>

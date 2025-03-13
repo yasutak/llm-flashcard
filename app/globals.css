@@ -2,110 +2,156 @@
 @tailwind components;
 @tailwind utilities;
 
-
-
 @layer base {
   :root {
-
+    /* Base colors */
     --background: 0 0% 100%;
-
     --foreground: 0 0% 3.9%;
 
+    /* Card styles */
     --card: 0 0% 100%;
-
     --card-foreground: 0 0% 3.9%;
-
+    
+    /* Popover styles */
     --popover: 0 0% 100%;
-
     --popover-foreground: 0 0% 3.9%;
-
-    --primary: 0 0% 9%;
-
-    --primary-foreground: 0 0% 98%;
-
+    
+    /* Primary colors - refined blue */
+    --primary: 214 100% 50%;
+    --primary-hover: 214 100% 45%;
+    --primary-light: 214 100% 95%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary colors */
     --secondary: 0 0% 96.1%;
-
     --secondary-foreground: 0 0% 9%;
-
+    
+    /* Accent colors - purple */  
+    --accent: 250 100% 65%;
+    --accent-light: 250 100% 95%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* Muted colors */
     --muted: 0 0% 96.1%;
-
     --muted-foreground: 0 0% 45.1%;
-
-    --accent: 0 0% 96.1%;
-
-    --accent-foreground: 0 0% 9%;
-
+    
+    /* Destructive colors */
     --destructive: 0 84.2% 60.2%;
-
     --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 89.8%;
-
-    --input: 0 0% 89.8%;
-
-    --ring: 0 0% 3.9%;
-
-    --chart-1: 12 76% 61%;
-
-    --chart-2: 173 58% 39%;
-
-    --chart-3: 197 37% 24%;
-
-    --chart-4: 43 74% 66%;
-
-    --chart-5: 27 87% 67%;
-
-    --radius: 0.5rem
+    
+    /* UI element colors */
+    --border: 214 30% 90%;
+    --input: 214 30% 90%;
+    --ring: 214 100% 50%;
+    
+    /* Grayscale colors */
+    --gray-50: 0 0% 98%;
+    --gray-100: 0 0% 96%;
+    --gray-200: 0 0% 90%;
+    --gray-300: 0 0% 80%;
+    --gray-400: 0 0% 65%;
+    --gray-500: 0 0% 50%;
+    --gray-600: 0 0% 35%;
+    --gray-700: 0 0% 25%;
+    --gray-800: 0 0% 15%;
+    --gray-900: 0 0% 10%;
+    
+    /* Chart colors */
+    --chart-1: 214 100% 50%;
+    --chart-2: 250 100% 65%;
+    --chart-3: 280 80% 60%;
+    --chart-4: 330 100% 65%;
+    --chart-5: 160 100% 45%;
+    
+    /* Border radius */
+    --radius: 0.5rem;
+    
+    /* Spacing scale (in px) */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+    
+    /* Typography scale */
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+    
+    /* Animation durations */
+    --duration-fast: 150ms;
+    --duration-normal: 250ms;
+    --duration-slow: 350ms;
   }
   .dark {
-
-    --background: 0 0% 3.9%;
-
+    /* Base colors */
+    --background: 222 47% 11%;
     --foreground: 0 0% 98%;
-
-    --card: 0 0% 3.9%;
-
+    
+    /* Card styles */
+    --card: 222 47% 11%;
     --card-foreground: 0 0% 98%;
-
-    --popover: 0 0% 3.9%;
-
+    
+    /* Popover styles */
+    --popover: 222 47% 11%;
     --popover-foreground: 0 0% 98%;
-
-    --primary: 0 0% 98%;
-
-    --primary-foreground: 0 0% 9%;
-
-    --secondary: 0 0% 14.9%;
-
+    
+    /* Primary colors - refined blue */
+    --primary: 214 100% 60%;
+    --primary-hover: 214 100% 65%;
+    --primary-light: 214 100% 20%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary colors */
+    --secondary: 217 33% 17%;
     --secondary-foreground: 0 0% 98%;
-
-    --muted: 0 0% 14.9%;
-
+    
+    /* Accent colors - purple */
+    --accent: 250 100% 70%;
+    --accent-light: 250 100% 20%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* Muted colors */
+    --muted: 217 33% 17%;
     --muted-foreground: 0 0% 63.9%;
-
-    --accent: 0 0% 14.9%;
-
-    --accent-foreground: 0 0% 98%;
-
+    
+    /* Destructive colors */
     --destructive: 0 62.8% 30.6%;
-
     --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 14.9%;
-
-    --input: 0 0% 14.9%;
-
-    --ring: 0 0% 83.1%;
-
-    --chart-1: 220 70% 50%;
-
-    --chart-2: 160 60% 45%;
-
-    --chart-3: 30 80% 55%;
-
-    --chart-4: 280 65% 60%;
-
-    --chart-5: 340 75% 55%
+    
+    /* UI element colors */
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 214 100% 60%;
+    
+    /* Grayscale colors - dark mode */
+    --gray-50: 220 14% 96%;
+    --gray-100: 220 14% 90%;
+    --gray-200: 220 14% 80%;
+    --gray-300: 220 14% 70%;
+    --gray-400: 220 14% 60%;
+    --gray-500: 220 14% 50%;
+    --gray-600: 220 14% 40%;
+    --gray-700: 220 14% 30%;
+    --gray-800: 220 14% 20%;
+    --gray-900: 220 14% 10%;
+    
+    /* Chart colors */
+    --chart-1: 214 100% 60%;
+    --chart-2: 250 100% 70%;
+    --chart-3: 280 80% 70%;
+    --chart-4: 330 100% 70%;
+    --chart-5: 160 100% 50%;
   }
 }
 
@@ -117,10 +163,130 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+  
+  h1 {
+    @apply text-3xl;
+  }
+  
+  h2 {
+    @apply text-2xl;
+  }
+  
+  h3 {
+    @apply text-xl;
+  }
+  
+  h4 {
+    @apply text-lg;
+  }
+}
+
+@layer components {
+  .card-shadow {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1),
+                0 1px 2px rgba(0, 0, 0, 0.06);
+    transition: box-shadow var(--duration-normal) ease;
+  }
+  
+  .card-shadow:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1),
+                0 2px 4px rgba(0, 0, 0, 0.06);
+  }
+  
+  .container-max {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring;
+  }
+  
+  /* Better button styles */
+  .btn-primary {
+    @apply bg-primary hover:bg-[hsl(var(--primary-hover))] text-primary-foreground rounded-md font-medium transition-colors focus-ring;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-md font-medium transition-colors focus-ring;
+  }
+  
+  .btn-ghost {
+    @apply bg-transparent hover:bg-gray-200 dark:hover:bg-gray-800 text-foreground rounded-md font-medium transition-colors focus-ring;
+  }
+  
+  .btn-accent {
+    @apply bg-accent hover:bg-accent/90 text-accent-foreground rounded-md font-medium transition-colors focus-ring;
   }
 }
 
 /* Custom styles for flashcard flip animation */
 .rotate-y-180 {
   transform: rotateY(180deg);
+}
+
+.card-flip {
+  perspective: 1000px;
+}
+
+.card-face {
+  backface-visibility: hidden;
+}
+
+/* Smooth page transitions */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms, transform 200ms;
+}
+
+/* Light hover effects */
+.hover-lift {
+  transition: transform var(--duration-fast) ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* Polished scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--gray-100));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--gray-300));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--gray-400));
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: hsl(var(--gray-800));
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(var(--gray-600));
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--gray-500));
 }
