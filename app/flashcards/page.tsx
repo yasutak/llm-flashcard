@@ -4,19 +4,19 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { MainNav } from "@/components/main-nav"
 import { Button } from "@/components/ui/button"
-import { ChatSidebar } from "@/components/chat-sidebar"
+import { ResponsiveSidebar } from "@/components/responsive-sidebar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Search, MessageSquare, BookOpen } from "lucide-react"
 import { useFlashcards } from "@/contexts/flashcard-context"
 import { useToast } from "@/hooks/use-toast"
-import { useErrors } from "@/contexts/error-context"
+// import { useErrors } from "@/contexts/error-context"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ApiError } from "@/services/api"
 import { FlashcardCard } from "@/components/flashcard-card"
 import { FlashcardNavigation } from "@/components/flashcard-navigation"
 import { FlashcardList } from "@/components/flashcard-list"
-import type { Flashcard } from "@/types"
+import { FlashcardCreator } from "@/components/flashcard-creator"
 
 export default function FlashcardsPage() {
   const router = useRouter()
@@ -28,15 +28,16 @@ export default function FlashcardsPage() {
     fetchDecks,
     fetchFlashcardsForDeck,
     updateCard, 
-    deleteCard
+    deleteCard,
+    createCard
   } = useFlashcards()
   const { toast } = useToast()
-  const { setApiErrors } = useErrors()
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
 
   // Track if we've already fetched data to prevent infinite loops
   const [hasFetched, setHasFetched] = useState(false)
@@ -147,12 +148,12 @@ export default function FlashcardsPage() {
     <div className="flex min-h-screen flex-col">
       <MainNav />
       <div className="flex flex-1 flex-col md:flex-row">
-        {/* Chat sidebar */}
-        <ChatSidebar currentChatId={getChatIdFromDeck()} />
+        {/* Use the responsive sidebar component */}
+        <ResponsiveSidebar currentChatId={getChatIdFromDeck()} />
 
         {/* Main content area */}
-        <div className="flex-1 bg-gradient-to-b from-blue-50 to-white p-4">
-          <div className="mx-auto max-w-4xl">
+        <div className="flex-1 bg-gradient-to-b from-blue-50 to-white p-2 sm:p-3 md:p-4">
+          <div className="mx-auto max-w-4xl px-2 sm:px-0">
             <div className="mb-8">
               <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900">Your Flashcards</h1>
@@ -168,7 +169,7 @@ export default function FlashcardsPage() {
                         router.push(`/chat-with-flashcards?chatId=${deck.chat_id}`);
                       }
                     }}
-                    className="flex items-center gap-2 bg-white shadow-sm hover-lift"
+                    className="hidden md:flex items-center gap-2 bg-white shadow-sm hover-lift"
                   >
                     <MessageSquare className="h-4 w-4 text-[hsl(var(--primary))]" />
                     Side-by-side View
@@ -215,7 +216,38 @@ export default function FlashcardsPage() {
                 </TabsList>
 
                 <TabsContent value="review" className="mt-0">
-                  {filteredCards.length > 0 ? (
+                  {isCreating ? (
+                    <FlashcardCreator
+                      deckId={selectedDeckId || (decks.length > 0 ? decks[0].id : "")}
+                      onSave={async (data) => {
+                        try {
+                          await createCard(data);
+                          setIsCreating(false);
+                          toast({
+                            title: "Card Created",
+                            description: "Your new flashcard has been added successfully",
+                          });
+                        } catch (error) {
+                          let errorMessage = "Failed to create the card. Please try again.";
+                          
+                          if (error instanceof ApiError) {
+                            errorMessage = error.getDetailedMessage();
+                          } else if (error instanceof Error) {
+                            errorMessage = error.message;
+                          }
+                          
+                          toast({
+                            title: "Card Creation Error",
+                            description: errorMessage,
+                            variant: "destructive",
+                          });
+                          
+                          console.error("Flashcard create error:", error);
+                        }
+                      }}
+                      onCancel={() => setIsCreating(false)}
+                    />
+                  ) : filteredCards.length > 0 ? (
                     <div className="flex flex-col items-center">
                       {/* Using our new FlashcardCard component */}
                       {filteredCards.length > 0 && currentIndex < filteredCards.length && (
@@ -233,6 +265,18 @@ export default function FlashcardsPage() {
                         onPrevious={handlePrevious}
                         onNext={handleNext}
                       />
+                      
+                      {/* New card creation button positioned at bottom right */}
+                      <div className="w-full relative mt-8">
+                        <div className="absolute bottom-0 right-0">
+                          <Button
+                            onClick={() => setIsCreating(true)}
+                            className="bg-blue-500 hover:bg-blue-600 shadow-sm"
+                          >
+                            Add New Card
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-16 max-w-md mx-auto">
