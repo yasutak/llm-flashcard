@@ -13,12 +13,13 @@ interface ChatContextType {
   messages: Message[]
   isLoading: boolean
   sendingMessage: boolean
+  selectingChat: boolean
   autoGenerateFlashcards: boolean
   setAutoGenerateFlashcards: (value: boolean) => void
   fetchChats: () => Promise<void>
   selectChat: (chatId: string) => Promise<void>
   startNewChat: () => Promise<Chat | undefined>
-  sendChatMessage: (content: string) => Promise<void>
+  sendChatMessage: (content: string) => Promise<{ flashcardResult?: { deck_id: string } }>
   updateChatTitle: (chatId: string, title: string) => Promise<Chat>
 }
 
@@ -34,6 +35,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [sendingMessage, setSendingMessage] = useState<boolean>(false)
   const [autoGenerateFlashcards, setAutoGenerateFlashcards] = useState<boolean>(false)
+  const [selectingChat, setSelectingChat] = useState<boolean>(false)
 
   useEffect(() => {
     if (user) {
@@ -61,15 +63,25 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }
 
   const selectChat = async (chatId: string) => {
-    setIsLoading(true)
+    // Prevent multiple simultaneous selections
+    if (selectingChat) return
+    setSelectingChat(true)
+
     try {
+      // If we already have the chat in our list, use that data
+      const existingChat = chats.find(chat => chat.id === chatId)
+      if (existingChat) {
+        setCurrentChat(existingChat)
+      }
+
+      // Fetch messages and update chat data in the background
       const { chat, messages: chatMessages } = await getChat(chatId)
       setCurrentChat(chat)
       setMessages(chatMessages)
     } catch (error) {
       console.error("Error selecting chat:", error)
     } finally {
-      setIsLoading(false)
+      setSelectingChat(false)
     }
   }
 
@@ -115,15 +127,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const sendChatMessage = async (content: string) => {
+  const sendChatMessage = async (content: string): Promise<{ flashcardResult?: { deck_id: string } }> => {
     // Ensure we have a valid chat to send the message to
     let chatId: string;
+    let flashcardResult: { deck_id: string } | undefined;
     
     if (!currentChat) {
       try {
         // Create a new chat and get its ID
         const newChat = await startNewChat();
-        if (!newChat) return;
+        if (!newChat) return { flashcardResult: undefined };
         chatId = newChat.id;
       } catch (error) {
         console.error("Failed to create new chat:", error);
@@ -161,13 +174,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const { messages: updatedMessages } = await getChat(chatId);
       setMessages(updatedMessages);
       
+      // Refresh the chats list to get updated titles
+      await fetchChats();
+      
       // If auto-generate flashcards is enabled, generate flashcards from the assistant's response
       if (autoGenerateFlashcards) {
         try {
-          // Find the latest assistant message
-          const assistantMessage = updatedMessages.find(msg => msg.role === 'assistant');
-          if (assistantMessage) {
-            await generateFlashcardsFromMessage(chatId, assistantMessage.id);
+          // Find the latest assistant message (the last one in the array)
+          const assistantMessages = updatedMessages.filter(msg => msg.role === 'assistant');
+          const latestAssistantMessage = assistantMessages.length > 0 ? 
+            assistantMessages[assistantMessages.length - 1] : null;
+            
+          if (latestAssistantMessage) {
+            const result = await generateFlashcardsFromMessage(chatId, latestAssistantMessage.id);
+            flashcardResult = result;
+            
             toast({
               title: "Flashcards generated",
               description: "Flashcards have been automatically created from the assistant's response",
@@ -182,10 +203,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           });
         }
       }
+      
+      return { flashcardResult };
     } catch (error) {
-      console.error("Error sending message:", error)
+      console.error("Error sending message:", error);
+      return { flashcardResult: undefined };
     } finally {
-      setSendingMessage(false)
+      setSendingMessage(false);
     }
   }
 
@@ -197,6 +221,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         messages,
         isLoading,
         sendingMessage,
+        selectingChat,
         autoGenerateFlashcards,
         setAutoGenerateFlashcards,
         fetchChats,
