@@ -7,6 +7,8 @@ export const errorHandler = (): MiddlewareHandler => {
     try {
       await next();
     } catch (error) {
+      console.error('Error caught in middleware:', error);
+      
       // Handle Zod validation errors
       if (error instanceof ZodError) {
         const formattedErrors = error.errors.map(err => ({
@@ -29,7 +31,14 @@ export const errorHandler = (): MiddlewareHandler => {
       
       // Handle HTTP exceptions
       if (error instanceof HTTPException) {
-        return error.getResponse();
+        // Ensure we're returning JSON, not the default response which might be text
+        return c.json(
+          {
+            status: error.status,
+            message: error.message || 'HTTP Error'
+          },
+          error.status
+        );
       }
 
       console.error('Unhandled error:', error);
@@ -38,6 +47,7 @@ export const errorHandler = (): MiddlewareHandler => {
         {
           status: 500,
           message: 'Internal Server Error',
+          error: error instanceof Error ? error.message : String(error)
         },
         500
       );

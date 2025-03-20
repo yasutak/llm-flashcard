@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const { login, register, isLoading } = useAuth()
   const { toast } = useToast()
-  const { clearErrors } = useErrors()
+  const { clearErrors, setApiErrors } = useErrors()
   
   // Clear form errors when switching tabs
   useEffect(() => {
@@ -39,24 +39,22 @@ export default function LoginPage() {
     try {
       await login({ username, password })
     } catch (error) {
-      if (error instanceof ApiError && error.isValidationError()) {
-        toast({
-          title: "Validation Error",
-          description: "Please correct the errors in the form",
-          variant: "destructive",
-        });
-      } else {
-        let errorMessage = "Please check your credentials and try again";
-        
-        if (error instanceof ApiError) {
-          errorMessage = error.getDetailedMessage();
-        } else if (error instanceof Error) {
-          errorMessage = error.message;
+      if (error instanceof ApiError) {
+        // Set the API errors in the form
+        if (error.isValidationError()) {
+          setApiErrors(LOGIN_FORM, error);
+        } else {
+          // For non-validation errors, still show a toast
+          toast({
+            title: "Login failed",
+            description: error.getDetailedMessage(),
+            variant: "destructive",
+          });
         }
-        
+      } else if (error instanceof Error) {
         toast({
           title: "Login failed",
-          description: errorMessage,
+          description: error.message,
           variant: "destructive",
         });
       }
@@ -69,24 +67,22 @@ export default function LoginPage() {
     try {
       await register({ username, password, confirmPassword })
     } catch (error) {
-      if (error instanceof ApiError && error.isValidationError()) {
-        toast({
-          title: "Validation Error",
-          description: "Please correct the errors in the form",
-          variant: "destructive",
-        });
-      } else {
-        let errorMessage = "Please try again with a different username";
-        
-        if (error instanceof ApiError) {
-          errorMessage = error.getDetailedMessage();
-        } else if (error instanceof Error) {
-          errorMessage = error.message;
+      if (error instanceof ApiError) {
+        // Set the API errors in the form
+        if (error.isValidationError()) {
+          setApiErrors(REGISTER_FORM, error);
+        } else {
+          // For non-validation errors, still show a toast
+          toast({
+            title: "Registration failed",
+            description: error.getDetailedMessage(),
+            variant: "destructive",
+          });
         }
-        
+      } else if (error instanceof Error) {
         toast({
           title: "Registration failed",
-          description: errorMessage,
+          description: error.message,
           variant: "destructive",
         });
       }

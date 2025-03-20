@@ -70,16 +70,18 @@ app.notFound((c) => {
 
 // Error handler
 app.onError((err, c) => {
-  console.error(`${err}`);
+  console.error(`Global error handler caught:`, err);
   
   // Check if the error is an HTTPException
   const status = err instanceof HTTPException ? err.status : 500;
-  const message = status === 500 ? 'Internal Server Error' : err.message;
+  const message = err instanceof HTTPException ? err.message : 'Internal Server Error';
   
+  // Always return a JSON response
   return c.json(
     {
       status,
       message,
+      error: err instanceof Error ? err.message : String(err)
     },
     status
   );

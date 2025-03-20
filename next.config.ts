@@ -10,6 +10,19 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async headers() {
+    return [
+      {
+        source: "/api/chat/stream",
+        headers: [
+          {
+            key: "Content-Encoding",
+            value: "none", // Disable compression for streaming endpoint
+          },
+        ],
+      },
+    ];
+  }
 };
 
 export default nextConfig;

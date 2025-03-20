@@ -60,3 +60,7 @@ export async function checkApiKey(): Promise<boolean> {
     const response = await fetchWithAuth<{ exists: boolean }>("/user/apikey")
     return response.exists
   } catch (error) {
+    console.error("API key check error:", error);
+    return false;
+  }
+}

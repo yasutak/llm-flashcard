@@ -14,7 +14,8 @@ import {
   getDecks,
   getDeck,
   updateDeck,
-  deleteDeck
+  deleteDeck,
+  createFlashcard
 } from "@/services/flashcard-service"
 
 // Dummy flashcard data
@@ -106,6 +107,7 @@ interface FlashcardContextType {
   fetchFlashcardsForChat: (chatId: string) => Promise<void>
   updateCard: (id: string, updates: Partial<Flashcard>) => Promise<void>
   deleteCard: (id: string) => Promise<void>
+  createCard: (data: { question: string; answer: string; deck_id: string }) => Promise<void>
   updateDeckTitle: (deckId: string, title: string) => Promise<void>
   deleteDeck: (deckId: string) => Promise<void>
   generateCardsFromChat: (chatId: string) => Promise<{ deck_id: string }>
@@ -350,6 +352,22 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const createCard = async (data: { question: string; answer: string; deck_id: string }) => {
+    setIsLoading(true)
+    try {
+      // Create the flashcard via the API
+      const newCard = await createFlashcard(data)
+      
+      // Update the local state
+      setFlashcards([newCard, ...flashcards])
+    } catch (error) {
+      console.error("Error creating flashcard:", error)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const generateCardsFromChat = async (chatId: string): Promise<{ deck_id: string }> => {
     setIsLoading(true)
     try {
@@ -402,6 +420,7 @@ export function FlashcardProvider({ children }: { children: ReactNode }) {
         fetchFlashcardsForChat,
         updateCard,
         deleteCard,
+        createCard,
         updateDeckTitle,
         deleteDeck: deleteDeckById,
         generateCardsFromChat,
